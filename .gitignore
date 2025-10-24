@@ -1,0 +1,81 @@
+# Build directories
+build/
+build-*/
+out/
+cmake-build-*/
+
+# CMake user presets (contains local paths)
+CMakeUserPresets.json
+
+# IDEs
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.sln.docstates
+
+# Visual Studio
+*.aps
+*.ncb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+*.psess
+*.vsp
+*.vspx
+*.sap
+ipch/
+*.ilk
+*.meta
+*.obj
+*.pch
+*.pdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*.log
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# Qt
+*.pro.user
+*.pro.user.*
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.qm
+.qmake.cache
+.qmake.stash
+
+# Compiled files
+*.o
+*.a
+*.lib
+*.dll
+*.exe
+*.out
+*.app
+
+# vcpkg
+vcpkg_installed/
+.vcpkg-root
+
+# Temporary files
+*~
+*.swp
+*.bak
+*.orig

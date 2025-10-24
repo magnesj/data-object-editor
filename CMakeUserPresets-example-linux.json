@@ -1,0 +1,32 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "linux-release",
+      "inherits": "linux-base",
+      "displayName": "Linux Release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_PREFIX_PATH": "/usr/lib/x86_64-linux-gnu/cmake/Qt6"
+      }
+    },
+    {
+      "name": "linux-debug",
+      "inherits": "linux-base",
+      "displayName": "Linux Debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_PREFIX_PATH": "/usr/lib/x86_64-linux-gnu/cmake/Qt6"
+      }
+    },
+    {
+      "name": "linux-relwithdebinfo",
+      "inherits": "linux-base",
+      "displayName": "Linux RelWithDebInfo",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_PREFIX_PATH": "/usr/lib/x86_64-linux-gnu/cmake/Qt6"
+      }
+    }
+  ]
+}

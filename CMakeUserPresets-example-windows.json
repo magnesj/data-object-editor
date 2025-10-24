@@ -1,0 +1,32 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "windows-release",
+      "inherits": "windows-base",
+      "displayName": "Windows Release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.8.1/msvc2022_64"
+      }
+    },
+    {
+      "name": "windows-debug",
+      "inherits": "windows-base",
+      "displayName": "Windows Debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.8.1/msvc2022_64"
+      }
+    },
+    {
+      "name": "windows-relwithdebinfo",
+      "inherits": "windows-base",
+      "displayName": "Windows RelWithDebInfo",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.8.1/msvc2022_64"
+      }
+    }
+  ]
+}
