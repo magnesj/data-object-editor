@@ -28,9 +28,8 @@ private:
     void releaseTestData();
 
 private slots:
-    void slotLoadProject();
-    void slotSaveProject();
     void slotNewProject();
+    void slotImportDataFile();
     void slotAbout();
 
 private:

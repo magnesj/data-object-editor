@@ -26,8 +26,8 @@ endif()
 # ========================================
 # Find Dependencies
 # ========================================
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGL OpenGLWidgets Svg)
-set(QT_LIBRARIES Qt6::Core Qt6::Gui Qt6::Widgets Qt6::OpenGL Qt6::OpenGLWidgets Qt6::Svg)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg)
+set(QT_LIBRARIES Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Svg)
 qt_standard_project_setup()
 
 find_package(Boost REQUIRED COMPONENTS filesystem regex system)

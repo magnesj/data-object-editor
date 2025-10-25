@@ -9,6 +9,10 @@
 #include "cafPdmUiTreeView.h"
 #include "cafSelectionManager.h"
 
+// DataDeck includes
+#include "DataDeck/RimDataDeck.h"
+#include "DataDeck/RicImportDataDeckFeature.h"
+
 // Qt includes
 #include <QAction>
 #include <QDockWidget>
@@ -29,9 +33,11 @@ public:
     {
         CAF_PDM_InitObject( "Demo Document", "", "", "" );
         CAF_PDM_InitFieldNoDefault( &m_objects, "Objects", "Objects", "", "", "" );
+        CAF_PDM_InitFieldNoDefault( &m_dataDecks, "DataDecks", "DATA Files", "", "", "" );
     }
 
     caf::PdmChildArrayField<caf::PdmObjectHandle*> m_objects;
+    caf::PdmChildArrayField<RimDataDeck*> m_dataDecks;
 };
 
 CAF_PDM_SOURCE_INIT( DemoDocument, "DemoDocument" );
@@ -149,15 +155,11 @@ void MainWindow::createMenus()
     connect( newAction, &QAction::triggered, this, &MainWindow::slotNewProject );
     fileMenu->addAction( newAction );
 
-    QAction* openAction = new QAction( "&Open...", this );
-    openAction->setShortcuts( QKeySequence::Open );
-    connect( openAction, &QAction::triggered, this, &MainWindow::slotLoadProject );
-    fileMenu->addAction( openAction );
+    fileMenu->addSeparator();
 
-    QAction* saveAction = new QAction( "&Save...", this );
-    saveAction->setShortcuts( QKeySequence::Save );
-    connect( saveAction, &QAction::triggered, this, &MainWindow::slotSaveProject );
-    fileMenu->addAction( saveAction );
+    QAction* importDataAction = new QAction( "Import &DATA File...", this );
+    connect( importDataAction, &QAction::triggered, this, &MainWindow::slotImportDataFile );
+    fileMenu->addAction( importDataAction );
 
     fileMenu->addSeparator();
 
@@ -230,38 +232,27 @@ void MainWindow::slotNewProject()
     statusBar()->showMessage( "New project created" );
 }
 
-void MainWindow::slotLoadProject()
-{
-    QString fileName = QFileDialog::getOpenFileName( this, "Open Project", "", "XML Files (*.xml)" );
-
-    if ( !fileName.isEmpty() )
-    {
-        releaseTestData();
-
-        m_project = new DemoDocument();
-        //m_project->readFile( fileName );
-
-        m_pdmUiTreeView->setPdmItem( m_project );
-        m_project->updateConnectedEditors();
-
-        statusBar()->showMessage( QString( "Loaded: %1" ).arg( fileName ) );
-    }
-}
-
-void MainWindow::slotSaveProject()
+void MainWindow::slotImportDataFile()
 {
     if ( !m_project )
     {
-        QMessageBox::warning( this, "Save Project", "No project to save!" );
+        QMessageBox::warning( this, "Import DATA File", "No project loaded!" );
         return;
     }
 
-    QString fileName = QFileDialog::getSaveFileName( this, "Save Project", "", "XML Files (*.xml)" );
+    RimDataDeck* dataDeck = RicImportDataDeckFeature::showImportDialog( this );
 
-    if ( !fileName.isEmpty() )
+    if ( dataDeck )
     {
-        //m_project->writeFile( fileName );
-        statusBar()->showMessage( QString( "Saved: %1" ).arg( fileName ) );
+        DemoDocument* doc = dynamic_cast<DemoDocument*>( m_project );
+        if ( doc )
+        {
+            doc->m_dataDecks.push_back( dataDeck );
+            m_project->updateConnectedEditors();
+            statusBar()->showMessage( QString( "Imported: %1 with %2 keywords" )
+                                          .arg( dataDeck->filePath() )
+                                          .arg( dataDeck->keywordCount() ) );
+        }
     }
 }
 

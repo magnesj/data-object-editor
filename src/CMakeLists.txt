@@ -19,8 +19,21 @@ set(PROJECT_FILES
     MainWindow.h
 )
 
+set(DATADECK_FILES
+    DataDeck/RimDataDeck.h
+    DataDeck/RimDataDeck.cpp
+    DataDeck/RimDataSection.h
+    DataDeck/RimDataSection.cpp
+    DataDeck/RimDataKeyword.h
+    DataDeck/RimDataKeyword.cpp
+    DataDeck/RimDataItem.h
+    DataDeck/RimDataItem.cpp
+    DataDeck/RicImportDataDeckFeature.h
+    DataDeck/RicImportDataDeckFeature.cpp
+)
+
 qt_add_executable(
-  ${PROJECT_NAME} ${PROJECT_FILES}
+  ${PROJECT_NAME} ${PROJECT_FILES} ${DATADECK_FILES}
   $<TARGET_OBJECTS:cafCommandFeatures> # Needed for cmake version < 3.12
 )
 
