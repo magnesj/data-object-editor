@@ -66,8 +66,12 @@ jobs:
 
     - name: Configure CMake (Windows)
       if: matrix.os == 'windows-latest'
-      run: |
-        cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH="${{ github.workspace }}\Qt\${{ matrix.qtver }}\msvc2022_64" -DCMAKE_TOOLCHAIN_FILE=external\vcpkg\scripts\buildsystems\vcpkg.cmake
+      shell: bash
+      run: >
+        cmake -B build -G Ninja
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo 
+        -DCMAKE_PREFIX_PATH="${{ github.workspace }}\Qt\${{ matrix.qtver }}\msvc2022_64" 
+        -DCMAKE_TOOLCHAIN_FILE=external\vcpkg\scripts\buildsystems\vcpkg.cmake
 
     - name: Build application
       run: |
