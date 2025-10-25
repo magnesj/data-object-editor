@@ -18,6 +18,7 @@ A demonstration application using AppFwk (Application Framework) and opm-common 
 - CMake 3.26+
 - Qt 6.4+
 - Git for Windows
+- (Optional) Ninja build system for faster builds
 
 ### Linux (Ubuntu/Debian)
 ```bash
@@ -63,6 +64,13 @@ Edit `CMakeUserPresets.json` and update the Qt installation path.
 **Windows (Visual Studio 2022):**
 ```powershell
 cmake --preset windows-release
+cmake --build build --config Release
+```
+
+**Windows (Ninja - faster builds):**
+```powershell
+# Run from Visual Studio Developer Command Prompt or Developer PowerShell
+cmake --preset windows-ninja-release
 cmake --build build --config Release
 ```
 

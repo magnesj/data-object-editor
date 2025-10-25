@@ -27,6 +27,36 @@
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_PREFIX_PATH": "C:/Qt/6.8.1/msvc2022_64"
       }
+    },
+    {
+      "name": "windows-ninja-release",
+      "inherits": "windows-ninja-base",
+      "displayName": "Windows Ninja Release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.8.1/msvc2022_64",
+        "CMAKE_MAKE_PROGRAM": "d:/tools/ninja/ninja.exe"
+      }
+    },
+    {
+      "name": "windows-ninja-debug",
+      "inherits": "windows-ninja-base",
+      "displayName": "Windows Ninja Debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.8.1/msvc2022_64",
+        "CMAKE_MAKE_PROGRAM": "d:/tools/ninja/ninja.exe"
+      }
+    },
+    {
+      "name": "windows-ninja-relwithdebinfo",
+      "inherits": "windows-ninja-base",
+      "displayName": "Windows Ninja RelWithDebInfo",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.8.1/msvc2022_64",
+        "CMAKE_MAKE_PROGRAM": "d:/tools/ninja/ninja.exe"
+      }
     }
   ]
 }
