@@ -1,10 +1,14 @@
 #include "DataFileSyntaxHighlighter.h"
+#include "KeywordDatabase.h"
+
+#include <QTextBlock>
 
 //--------------------------------------------------------------------------------------------------
 ///
 //--------------------------------------------------------------------------------------------------
 DataFileSyntaxHighlighter::DataFileSyntaxHighlighter( QTextDocument* parent )
     : QSyntaxHighlighter( parent )
+    , m_keywordDatabase( KeywordDatabase::instance() )
 {
     HighlightingRule rule;
 
@@ -15,21 +19,18 @@ DataFileSyntaxHighlighter::DataFileSyntaxHighlighter( QTextDocument* parent )
     // Section keywords (RUNSPEC, GRID, PROPS, etc.)
     m_sectionKeywordFormat.setForeground( QColor( 86, 156, 214 ) ); // Blue like in example
     m_sectionKeywordFormat.setFontWeight( QFont::Bold );
-    QStringList sectionKeywords;
-    sectionKeywords << "^RUNSPEC\\b"
-                    << "^GRID\\b"
-                    << "^EDIT\\b"
-                    << "^PROPS\\b"
-                    << "^REGIONS\\b"
-                    << "^SOLUTION\\b"
-                    << "^SUMMARY\\b"
-                    << "^SCHEDULE\\b";
-    for ( const QString& pattern : sectionKeywords )
-    {
-        rule.pattern = QRegularExpression( pattern );
-        rule.format  = m_sectionKeywordFormat;
-        m_rules.append( rule );
-    }
+
+    // Valid keywords
+    m_keywordFormat.setForeground( QColor( 215, 186, 125 ) ); // Orange/yellow like in example
+    m_keywordFormat.setFontWeight( QFont::Bold );
+
+    // Invalid keywords (unknown or wrong context)
+    m_invalidKeywordFormat.setForeground( QColor( 255, 100, 100 ) ); // Red
+    m_invalidKeywordFormat.setFontWeight( QFont::Bold );
+
+    // Context invalid (valid keyword in wrong section)
+    m_contextInvalidFormat.setForeground( QColor( 255, 165, 0 ) ); // Orange
+    m_contextInvalidFormat.setFontWeight( QFont::Bold );
 
     // INCLUDE keyword (important)
     QTextCharFormat includeFormat;
@@ -37,13 +38,6 @@ DataFileSyntaxHighlighter::DataFileSyntaxHighlighter( QTextDocument* parent )
     includeFormat.setFontWeight( QFont::Bold );
     rule.pattern = QRegularExpression( "^INCLUDE\\b" );
     rule.format  = includeFormat;
-    m_rules.append( rule );
-
-    // Regular keywords (must start at line beginning or after whitespace)
-    m_keywordFormat.setForeground( QColor( 215, 186, 125 ) ); // Orange/yellow like in example
-    m_keywordFormat.setFontWeight( QFont::Bold );
-    rule.pattern = QRegularExpression( "^[A-Z][_A-Z0-9]*\\b" );
-    rule.format  = m_keywordFormat;
     m_rules.append( rule );
 
     // Numbers (including scientific notation)
@@ -79,6 +73,9 @@ DataFileSyntaxHighlighter::DataFileSyntaxHighlighter( QTextDocument* parent )
     rule.pattern = QRegularExpression( "/" );
     rule.format  = m_delimiterFormat;
     m_rules.append( rule );
+
+    // Initialize keyword sets
+    initializeKeywordSets();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -93,7 +90,7 @@ void DataFileSyntaxHighlighter::highlightBlock( const QString& text )
         return;
     }
 
-    // Apply other rules
+    // Apply non-keyword rules first
     for ( const HighlightingRule& rule : m_rules )
     {
         QRegularExpressionMatchIterator matchIterator = rule.pattern.globalMatch( text );
@@ -103,4 +100,111 @@ void DataFileSyntaxHighlighter::highlightBlock( const QString& text )
             setFormat( match.capturedStart(), match.capturedLength(), rule.format );
         }
     }
+
+    // Apply keyword highlighting with context awareness
+    highlightKeywords( text );
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void DataFileSyntaxHighlighter::initializeKeywordSets()
+{
+    if ( m_keywordDatabase )
+    {
+        // Get section keywords
+        QStringList sections = m_keywordDatabase->getAllSections();
+        for ( const QString& section : sections )
+        {
+            m_sectionKeywords.insert( section );
+        }
+
+        // Get all valid keywords
+        QStringList keywords = m_keywordDatabase->getAllKeywords();
+        for ( const QString& keyword : keywords )
+        {
+            m_validKeywords.insert( keyword );
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void DataFileSyntaxHighlighter::highlightKeywords( const QString& text )
+{
+    // Find keywords at line start (after optional whitespace)
+    static QRegularExpression keywordPattern( "^\\s*([A-Z][_A-Z0-9]*)\\b" );
+    QRegularExpressionMatch match = keywordPattern.match( text );
+
+    if ( match.hasMatch() )
+    {
+        QString keyword = match.captured( 1 );
+        int start = match.capturedStart( 1 );
+        int length = match.capturedLength( 1 );
+
+        QTextCharFormat format;
+
+        if ( m_sectionKeywords.contains( keyword ) )
+        {
+            // Section keyword
+            format = m_sectionKeywordFormat;
+        }
+        else if ( m_validKeywords.contains( keyword ) )
+        {
+            // Check if keyword is valid in current context
+            QString currentSection = getCurrentSection( currentBlock().blockNumber() );
+            if ( !currentSection.isEmpty() )
+            {
+                KeywordInfo info = m_keywordDatabase->getKeywordInfo( keyword );
+                if ( info.isValidInSection( currentSection ) )
+                {
+                    format = m_keywordFormat; // Valid in context
+                }
+                else
+                {
+                    format = m_contextInvalidFormat; // Valid keyword, wrong section
+                }
+            }
+            else
+            {
+                format = m_keywordFormat; // No section context, assume valid
+            }
+        }
+        else
+        {
+            // Unknown keyword
+            format = m_invalidKeywordFormat;
+        }
+
+        setFormat( start, length, format );
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+QString DataFileSyntaxHighlighter::getCurrentSection( int blockNumber ) const
+{
+    // Search backwards from current block to find the last section keyword
+    QTextDocument* doc = document();
+    if ( !doc ) return QString();
+
+    for ( int i = blockNumber; i >= 0; --i )
+    {
+        QTextBlock block = doc->findBlockByNumber( i );
+        if ( block.isValid() )
+        {
+            QString blockText = block.text().trimmed();
+            for ( const QString& section : m_sectionKeywords )
+            {
+                if ( blockText.startsWith( section, Qt::CaseInsensitive ) )
+                {
+                    return section;
+                }
+            }
+        }
+    }
+
+    return QString();
 }

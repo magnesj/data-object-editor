@@ -16,6 +16,7 @@
 #include "DataDeck/RimDataKeyword.h"
 #include "DataDeck/RicImportDataDeckFeature.h"
 #include "DataDeck/RimDataDeckTextEditor.h"
+#include "DataDeck/KeywordHelpWidget.h"
 
 // Qt includes
 #include <QAction>
@@ -68,6 +69,7 @@ MainWindow::MainWindow()
     , m_pdmUiPropertyView( nullptr )
     , m_project( nullptr )
     , m_textEditor( nullptr )
+    , m_keywordHelpWidget( nullptr )
     , m_updatingFromTree( false )
     , m_textEditorToolBar( nullptr )
     , m_syncTextToTreeAction( nullptr )
@@ -162,6 +164,21 @@ void MainWindow::createDockPanels()
 
         // Stack property view below tree view
         splitDockWidget( treeDock, dockWidget, Qt::Vertical );
+    }
+
+    // Create keyword help dock (right side)
+    {
+        QDockWidget* dockWidget = new QDockWidget( "Keyword Help", this );
+        dockWidget->setObjectName( "keywordHelpPanel" );
+        dockWidget->setAllowedAreas( Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea );
+
+        m_keywordHelpWidget = new KeywordHelpWidget( dockWidget );
+        dockWidget->setWidget( m_keywordHelpWidget );
+
+        addDockWidget( Qt::RightDockWidgetArea, dockWidget );
+        
+        // Connect text editor to help widget
+        m_textEditor->setKeywordHelpWidget( m_keywordHelpWidget );
     }
 
     // Connect text editor modification signal

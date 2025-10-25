@@ -28,6 +28,12 @@ set(DATADECK_FILES
     DataDeck/DataFileSyntaxHighlighter.cpp
     DataDeck/RimDataDeckTextEditor.h
     DataDeck/RimDataDeckTextEditor.cpp
+    DataDeck/KeywordDatabase.h
+    DataDeck/KeywordDatabase.cpp
+    DataDeck/DataFileCompleter.h
+    DataDeck/DataFileCompleter.cpp
+    DataDeck/KeywordHelpWidget.h
+    DataDeck/KeywordHelpWidget.cpp
 )
 
 qt_add_executable(

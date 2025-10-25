@@ -8,6 +8,7 @@ class QAction;
 class QToolBar;
 class RimDataDeckTextEditor;
 class RimDataDeck;
+class KeywordHelpWidget;
 
 namespace caf
 {
@@ -72,6 +73,7 @@ private:
 
     // Text editor
     RimDataDeckTextEditor*  m_textEditor;
+    KeywordHelpWidget*      m_keywordHelpWidget;
     QToolBar*               m_textEditorToolBar;
     QAction*                m_syncTextToTreeAction;
     QAction*                m_syncTreeToTextAction;

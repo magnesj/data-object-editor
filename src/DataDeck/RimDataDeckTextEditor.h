@@ -2,9 +2,12 @@
 
 #include <QPlainTextEdit>
 #include <QWidget>
+#include <QTimer>
 
 class RimDataDeck;
 class DataFileSyntaxHighlighter;
+class DataFileCompleter;
+class KeywordHelpWidget;
 class LineNumberArea;
 
 //==================================================================================================
@@ -27,21 +30,33 @@ public:
     void lineNumberAreaPaintEvent( QPaintEvent* event );
     int  lineNumberAreaWidth();
 
+    void setKeywordHelpWidget( KeywordHelpWidget* helpWidget );
+
 signals:
     void modificationChanged( bool changed );
 
 protected:
     void resizeEvent( QResizeEvent* event ) override;
+    void keyPressEvent( QKeyEvent* event ) override;
 
 private slots:
     void updateLineNumberAreaWidth( int newBlockCount );
     void highlightCurrentLine();
     void updateLineNumberArea( const QRect& rect, int dy );
+    void onCursorPositionChanged();
+    void updateKeywordHelp();
 
 private:
+    void setupCompleter();
+    void insertCompletion( const QString& completion );
+    QString textUnderCursor() const;
+    
     RimDataDeck*                m_dataDeck;
     DataFileSyntaxHighlighter*  m_syntaxHighlighter;
+    DataFileCompleter*          m_completer;
+    KeywordHelpWidget*          m_helpWidget;
     QWidget*                    m_lineNumberArea;
+    QTimer*                     m_helpUpdateTimer;
 };
 
 //==================================================================================================
