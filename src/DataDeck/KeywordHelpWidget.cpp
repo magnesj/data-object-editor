@@ -38,13 +38,9 @@ void KeywordHelpWidget::setupUI()
     m_helpText = new QTextEdit(this);
     m_helpText->setReadOnly(true);
     m_helpText->setFont(QFont("Cascadia Mono", 9));
-    m_helpText->setMaximumHeight(200);
     m_helpText->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     m_helpText->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    m_layout->addWidget(m_helpText);
-    
-    // Add stretch to push content to top
-    m_layout->addStretch();
+    m_layout->addWidget(m_helpText, 1); // Add with stretch factor 1 to use all available space
     
     // Initialize with empty help
     clearHelp();
@@ -135,17 +131,39 @@ void KeywordHelpWidget::formatKeywordInfo(const KeywordInfo& info, const QString
         html += QString("<b>Data type:</b> %1<br><br>").arg(info.valueType);
     }
     
-    // Parameters
+    // Description
+    if (!info.description.isEmpty())
+    {
+        html += QString("<b>Description:</b> %1<br><br>").arg(info.description);
+    }
+
+    // Parameters with detailed column information
     if (!info.parameterNames.isEmpty())
     {
-        html += "<b>Parameters:</b><br>";
+        html += "<b>Parameters (Columns):</b><br>";
+        html += "<table style='border-collapse: collapse; margin: 5px 0; background-color: white; color: black;'>";
+        html += "<tr style='background-color: #e0e0e0; font-weight: bold; color: black;'>";
+        html += "<td style='padding: 4px 8px; border: 1px solid #888; color: black;'>Col</td>";
+        html += "<td style='padding: 4px 8px; border: 1px solid #888; color: black;'>Parameter</td>";
+        html += "<td style='padding: 4px 8px; border: 1px solid #888; color: black;'>Type</td>";
+        html += "<td style='padding: 4px 8px; border: 1px solid #888; color: black;'>Description</td>";
+        html += "</tr>";
+        
         for (int i = 0; i < info.parameterNames.size(); ++i)
         {
             QString paramName = info.parameterNames[i];
             QString paramType = (i < info.parameterTypes.size()) ? info.parameterTypes[i] : "UNKNOWN";
-            html += QString("  • %1 (%2)<br>").arg(paramName).arg(paramType);
+            QString paramDesc = (i < info.parameterDescriptions.size()) ? info.parameterDescriptions[i] : "";
+            
+            QString rowBg = (i % 2 == 0) ? "#f5f5f5" : "#ffffff";
+            html += QString("<tr style='background-color: %1; color: black;'>").arg(rowBg);
+            html += QString("<td style='padding: 4px 8px; border: 1px solid #888; text-align: center; font-weight: bold; color: black;'>%1</td>").arg(i + 1);
+            html += QString("<td style='padding: 4px 8px; border: 1px solid #888; font-family: monospace; color: black;'>%1</td>").arg(paramName);
+            html += QString("<td style='padding: 4px 8px; border: 1px solid #888; color: #333;'>%1</td>").arg(paramType);
+            html += QString("<td style='padding: 4px 8px; border: 1px solid #888; color: black;'>%1</td>").arg(paramDesc);
+            html += "</tr>";
         }
-        html += "<br>";
+        html += "</table><br>";
     }
     
     // Size information

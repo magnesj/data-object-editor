@@ -108,6 +108,98 @@ QString KeywordDatabase::findKeywordsDirectory() const
 //--------------------------------------------------------------------------------------------------
 ///
 //--------------------------------------------------------------------------------------------------
+QString KeywordDatabase::createParameterDescription(const QString& name, const QString& type, const QString& dimension, const QJsonValue& defaultValue) const
+{
+    QString description;
+    
+    // Start with a cleaned-up parameter name
+    QString cleanName = name;
+    cleanName = cleanName.replace("_", " ").toLower();
+    
+    // Add type information
+    if (!type.isEmpty())
+    {
+        description += QString("(%1) ").arg(type);
+    }
+    
+    // Add dimension information if available
+    if (!dimension.isEmpty() && dimension != "1")
+    {
+        QString dimDesc = dimension;
+        dimDesc.replace("*", "×").replace("/", " per ");
+        description += QString("[%1] ").arg(dimDesc);
+    }
+    
+    // Add default value if specified
+    if (!defaultValue.isUndefined() && !defaultValue.isNull())
+    {
+        QString defaultStr;
+        if (defaultValue.isString())
+        {
+            defaultStr = QString("'%1'").arg(defaultValue.toString());
+        }
+        else
+        {
+            defaultStr = defaultValue.toVariant().toString();
+        }
+        description += QString("(default: %1) ").arg(defaultStr);
+    }
+    
+    // Add parameter-specific descriptions based on common Eclipse keywords
+    description += getParameterHint(name);
+    
+    return description.trimmed();
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+QString KeywordDatabase::getParameterHint(const QString& paramName) const
+{
+    static QMap<QString, QString> hints = {
+        // Well-related parameters
+        {"WELL", "Well name identifier"},
+        {"I", "Grid block I-coordinate"},
+        {"J", "Grid block J-coordinate"},
+        {"K1", "Upper grid layer"},
+        {"K2", "Lower grid layer"},
+        {"STATE", "Connection state (OPEN/SHUT)"},
+        {"SAT_TABLE", "Saturation table number"},
+        {"CONNECTION_TRANSMISSIBILITY_FACTOR", "Transmissibility multiplier"},
+        {"DIAMETER", "Wellbore diameter"},
+        {"Kh", "Permeability-thickness product"},
+        {"SKIN", "Skin factor for pressure drop"},
+        {"D_FACTOR", "Non-Darcy flow coefficient"},
+        {"DIR", "Perforation direction (X/Y/Z)"},
+        {"PR", "Wellbore radius"},
+        
+        // Production/injection control
+        {"STATUS", "Well status"},
+        {"TYPE", "Injection fluid type"},
+        {"CTRL_MODE", "Control mode"},
+        {"OIL_RATE", "Oil production rate"},
+        {"WATER_RATE", "Water rate"},
+        {"GAS_RATE", "Gas rate"},
+        {"BHP", "Bottom hole pressure"},
+        {"THP", "Tubing head pressure"},
+        
+        // Grid properties
+        {"DX", "Grid block size in X-direction"},
+        {"DY", "Grid block size in Y-direction"},
+        {"DZ", "Grid block size in Z-direction"},
+        {"PORO", "Porosity"},
+        {"PERMX", "Permeability in X-direction"},
+        {"PERMY", "Permeability in Y-direction"},
+        {"PERMZ", "Permeability in Z-direction"},
+        {"ACTNUM", "Active cell indicator (0/1)"}
+    };
+    
+    return hints.value(paramName, "");
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
 void KeywordDatabase::loadFallbackKeywords()
 {
     // Add some common Eclipse keywords as fallback
@@ -178,6 +270,8 @@ void KeywordDatabase::loadFallbackKeywords()
         info.valueType = kw.type;
         m_keywords[kw.name] = info;
     }
+    
+    // Note: Detailed parameter information is now extracted from JSON files
     
     qDebug() << "Loaded" << m_keywords.size() << "fallback keywords";
 }
@@ -260,25 +354,35 @@ KeywordInfo KeywordDatabase::parseKeywordJson(const QJsonObject& json, const QSt
         {
             info.valueType = data["value_type"].toString();
         }
-        
-        // Parse items/parameters if present
-        if (data.contains("items") && data["items"].isArray())
+    }
+    
+    // Parse items array (parameter details)
+    if (json.contains("items") && json["items"].isArray())
+    {
+        QJsonArray items = json["items"].toArray();
+        for (const QJsonValue& item : items)
         {
-            QJsonArray items = data["items"].toArray();
-            for (const QJsonValue& item : items)
+            if (item.isObject())
             {
-                if (item.isObject())
+                QJsonObject itemObj = item.toObject();
+                if (itemObj.contains("name"))
                 {
-                    QJsonObject itemObj = item.toObject();
-                    if (itemObj.contains("name"))
-                    {
-                        info.parameterNames << itemObj["name"].toString();
-                    }
-                    if (itemObj.contains("value_type"))
-                    {
-                        info.parameterTypes << itemObj["value_type"].toString();
-                    }
+                    info.parameterNames << itemObj["name"].toString();
                 }
+                if (itemObj.contains("value_type"))
+                {
+                    info.parameterTypes << itemObj["value_type"].toString();
+                }
+                
+                // Build description from available information
+                QString name = itemObj.value("name").toString();
+                QString type = itemObj.value("value_type").toString();
+                QString dimension = itemObj.value("dimension").toString();
+                QJsonValue defaultVal = itemObj.value("default");
+                
+                // Create a meaningful description
+                QString paramDesc = createParameterDescription(name, type, dimension, defaultVal);
+                info.parameterDescriptions << paramDesc;
             }
         }
     }

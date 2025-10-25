@@ -56,6 +56,8 @@ private:
     void loadKeywordsFromDirectory(const QString& directory);
     void loadFallbackKeywords();
     KeywordInfo parseKeywordJson(const QJsonObject& json, const QString& keywordName);
+    QString createParameterDescription(const QString& name, const QString& type, const QString& dimension, const QJsonValue& defaultValue) const;
+    QString getParameterHint(const QString& paramName) const;
     QString findKeywordsDirectory() const;
     
     static KeywordDatabase* s_instance;
