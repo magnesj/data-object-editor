@@ -1,0 +1,131 @@
+name: Build Data Object Editor
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        qtver: [6.4.0, 6.5.0]
+        include:
+          - os: ubuntu-latest
+            compiler: gcc
+          - os: windows-latest
+            compiler: msvc
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: ${{ matrix.qtver }}
+        dir: "${{ github.workspace }}/Qt/"
+        cache: true
+
+    - name: Install dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential curl zip unzip tar flex bison ninja-build
+        sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev
+
+    - name: Install Ninja (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install ninja
+
+    - name: Setup MSVC (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Bootstrap vcpkg (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd external/vcpkg
+        ./bootstrap-vcpkg.sh
+
+    - name: Bootstrap vcpkg (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cd external\vcpkg
+        .\bootstrap-vcpkg.bat
+
+    - name: Configure CMake (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cmake -B build -G "Ninja" \
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+          -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/${{ matrix.qtver }}/gcc_64" \
+          -DCMAKE_TOOLCHAIN_FILE=external/vcpkg/scripts/buildsystems/vcpkg.cmake
+
+    - name: Configure CMake (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cmake -B build -G "Ninja" `
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+          -DCMAKE_PREFIX_PATH="${{ github.workspace }}\Qt\${{ matrix.qtver }}\msvc2022_64" `
+          -DCMAKE_TOOLCHAIN_FILE=external\vcpkg\scripts\buildsystems\vcpkg.cmake
+
+    - name: Build application
+      run: |
+        cmake --build build --config RelWithDebInfo --target DataObjectEditorApp
+
+    - name: Run tests (if available)
+      run: |
+        cd build
+        ctest --output-on-failure -C RelWithDebInfo
+      continue-on-error: true
+
+    - name: Package artifacts (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        mkdir -p dist
+        cp build/DataObjectEditorApp dist/
+        # Copy Qt libraries if needed
+        ldd build/DataObjectEditorApp || true
+
+    - name: Package artifacts (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        mkdir dist
+        copy build\RelWithDebInfo\DataObjectEditorApp.exe dist\
+        # Qt deployment will be handled by qt_generate_deploy_app_script
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: DataObjectEditor-${{ matrix.os }}-Qt${{ matrix.qtver }}
+        path: |
+          dist/
+          build/DataObjectEditorApp*
+        retention-days: 30
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          DataObjectEditor-*/
+        draft: false
+        prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
