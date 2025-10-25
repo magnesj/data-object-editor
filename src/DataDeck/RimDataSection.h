@@ -38,6 +38,7 @@ public:
     QString         sectionName() const;
     SectionType     sectionType() const;
     int             keywordCount() const;
+    const caf::PdmChildArrayField<RimDataKeyword*>& keywords() const;
 
     static QString  sectionTypeToString( SectionType type );
     static SectionType stringToSectionType( const QString& str );

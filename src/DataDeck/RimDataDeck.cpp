@@ -150,6 +150,9 @@ void RimDataDeck::buildSectionsFromDeck()
         return;
     }
 
+    // First pass: calculate line positions for each keyword
+    calculateTextPositions();
+
     // Create sections for organizing keywords
     RimDataSection* currentSection = nullptr;
     RimDataSection::SectionType currentSectionType = RimDataSection::SectionType::OTHER;
@@ -169,6 +172,19 @@ void RimDataDeck::buildSectionsFromDeck()
             currentSection = new RimDataSection();
             currentSection->setSectionType( currentSectionType );
             m_sections.push_back( currentSection );
+            
+            // Create a keyword object for the section delimiter itself
+            RimDataKeyword* sectionKeyword = new RimDataKeyword();
+            sectionKeyword->setDeckKeyword( &keyword );
+            
+            // Set text position from our calculated positions
+            if ( m_keywordPositions.contains( i ) )
+            {
+                const auto& pos = m_keywordPositions[i];
+                sectionKeyword->setTextPosition( pos.first, pos.second );
+            }
+            
+            currentSection->addKeyword( sectionKeyword );
         }
         else
         {
@@ -185,6 +201,14 @@ void RimDataDeck::buildSectionsFromDeck()
             // Create keyword wrapper
             RimDataKeyword* dataKeyword = new RimDataKeyword();
             dataKeyword->setDeckKeyword( &keyword );
+            
+            // Set text position from our calculated positions
+            if ( m_keywordPositions.contains( i ) )
+            {
+                const auto& pos = m_keywordPositions[i];
+                dataKeyword->setTextPosition( pos.first, pos.second );
+            }
+            
             currentSection->addKeyword( dataKeyword );
         }
     }
@@ -323,4 +347,105 @@ QString RimDataDeck::serializeToText() const
     }
 
     return lines.join( "\n" );
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void RimDataDeck::calculateTextPositions()
+{
+    m_keywordPositions.clear();
+    
+    if ( !m_deck )
+    {
+        return;
+    }
+
+    // Get the actual text content that will be displayed
+    QString textContent = serializeToText();
+    QStringList lines = textContent.split( '\n' );
+    
+    // Track which lines we've already used to avoid duplicate matches
+    QSet<int> usedLines;
+    
+    // Find each keyword in the actual text content
+    for ( size_t i = 0; i < m_deck->size(); ++i )
+    {
+        const Opm::DeckKeyword& keyword = (*m_deck)[i];
+        QString keywordName = QString::fromStdString( keyword.name() );
+        
+        // Search for this keyword in the text lines (starting from unused lines)
+        int startLine = -1;
+        int endLine = -1;
+        
+        for ( int lineIdx = 0; lineIdx < lines.size(); ++lineIdx )
+        {
+            // Skip lines we've already assigned to previous keywords
+            if ( usedLines.contains( lineIdx ) )
+                continue;
+                
+            QString line = lines[lineIdx].trimmed();
+            
+            // Check if this line contains our keyword name
+            if ( line == keywordName )
+            {
+                startLine = lineIdx + 1; // Convert to 1-based line numbers
+                usedLines.insert( lineIdx );
+                
+                // For section keywords, the end is usually just the keyword line
+                bool isSection = ( keywordName == "RUNSPEC" || keywordName == "GRID" || keywordName == "EDIT" ||
+                                  keywordName == "PROPS" || keywordName == "REGIONS" || keywordName == "SOLUTION" ||
+                                  keywordName == "SUMMARY" || keywordName == "SCHEDULE" );
+                
+                if ( isSection )
+                {
+                    endLine = startLine; // Section keywords are single line
+                }
+                else
+                {
+                    // For regular keywords, find the terminating "/"
+                    endLine = startLine;
+                    for ( int searchIdx = lineIdx + 1; searchIdx < lines.size(); ++searchIdx )
+                    {
+                        QString searchLine = lines[searchIdx].trimmed();
+                        usedLines.insert( searchIdx );
+                        
+                        if ( searchLine == "/" )
+                        {
+                            endLine = searchIdx + 1; // Include the "/" line
+                            break;
+                        }
+                        else if ( !searchLine.isEmpty() )
+                        {
+                            endLine = searchIdx + 1; // Update end line as we find content
+                        }
+                    }
+                }
+                break; // Found the keyword, move to next
+            }
+        }
+        
+        if ( startLine > 0 && endLine > 0 )
+        {
+            m_keywordPositions[i] = QPair<int, int>( startLine, endLine );
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+RimDataKeyword* RimDataDeck::findKeywordAtLine( int lineNumber )
+{
+    for ( RimDataSection* section : m_sections )
+    {
+        for ( RimDataKeyword* keyword : section->keywords() )
+        {
+            if ( keyword->startLine() <= lineNumber && lineNumber <= keyword->endLine() )
+            {
+                return keyword;
+            }
+        }
+    }
+    return nullptr;
 }

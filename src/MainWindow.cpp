@@ -13,6 +13,7 @@
 
 // DataDeck includes
 #include "DataDeck/RimDataDeck.h"
+#include "DataDeck/RimDataKeyword.h"
 #include "DataDeck/RicImportDataDeckFeature.h"
 #include "DataDeck/RimDataDeckTextEditor.h"
 
@@ -26,6 +27,9 @@
 #include <QMessageBox>
 #include <QSettings>
 #include <QStatusBar>
+#include <QTextBlock>
+#include <QTextCursor>
+#include <QTextDocument>
 #include <QToolBar>
 
 // opm-common includes
@@ -64,6 +68,7 @@ MainWindow::MainWindow()
     , m_pdmUiPropertyView( nullptr )
     , m_project( nullptr )
     , m_textEditor( nullptr )
+    , m_updatingFromTree( false )
     , m_textEditorToolBar( nullptr )
     , m_syncTextToTreeAction( nullptr )
     , m_syncTreeToTextAction( nullptr )
@@ -161,6 +166,9 @@ void MainWindow::createDockPanels()
 
     // Connect text editor modification signal
     connect( m_textEditor, &RimDataDeckTextEditor::modificationChanged, this, &MainWindow::slotTextEditorModified );
+
+    // Connect text editor cursor position changes to tree selection
+    connect( m_textEditor, &QPlainTextEdit::cursorPositionChanged, this, &MainWindow::slotTextCursorChanged );
 
     // Connect tree view selection to property view and text editor
     connect( m_pdmUiTreeView, SIGNAL( selectionChanged() ), this, SLOT( slotSelectionChanged() ) );
@@ -338,8 +346,36 @@ void MainWindow::slotSelectionChanged()
 
     m_pdmUiPropertyView->showProperties( obj );
 
-    // Update text editor
+    // Update text editor first
     updateTextEditor();
+    
+    // Then synchronize text editor selection with tree selection
+    if ( m_textEditor && obj && !m_updatingFromTree )
+    {
+        RimDataKeyword* keyword = dynamic_cast<RimDataKeyword*>( obj );
+        if ( keyword )
+        {
+            int startLine = keyword->startLine();
+            int endLine = keyword->endLine();
+            
+            if ( startLine >= 0 && endLine >= 0 )
+            {
+                m_updatingFromTree = true;
+                highlightTextRange( startLine, endLine );
+                m_updatingFromTree = false;
+                
+                // Show brief status message with position info
+                statusBar()->showMessage( QString( "Selected: %1 (lines %2-%3)" )
+                                         .arg( keyword->keywordName() )
+                                         .arg( startLine )
+                                         .arg( endLine ), 2000 );
+            }
+            else
+            {
+                statusBar()->showMessage( "No text position available for this item", 2000 );
+            }
+        }
+    }
 }
 
 void MainWindow::slotAbout()
@@ -662,4 +698,81 @@ void MainWindow::slotTextEditorModified( bool modified )
     {
         m_syncTextToTreeAction->setEnabled( modified && getCurrentDataDeck() != nullptr );
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void MainWindow::highlightTextRange( int startLine, int endLine )
+{
+    if ( !m_textEditor )
+    {
+        return;
+    }
+
+    // Convert line numbers to text positions (lines are 1-based, but QTextEdit is 0-based)
+    QTextDocument* doc = m_textEditor->document();
+    QTextBlock startBlock = doc->findBlockByLineNumber( startLine - 1 );
+    QTextBlock endBlock = doc->findBlockByLineNumber( endLine - 1 );
+
+    if ( !startBlock.isValid() || !endBlock.isValid() )
+    {
+        statusBar()->showMessage( QString( "Could not find lines %1-%2 in text" ).arg( startLine ).arg( endLine ), 2000 );
+        return;
+    }
+
+    // Create text cursor and select the range
+    QTextCursor cursor = m_textEditor->textCursor();
+    cursor.setPosition( startBlock.position() );
+    cursor.setPosition( endBlock.position() + endBlock.length() - 1, QTextCursor::KeepAnchor );
+
+    // Set the cursor (this will highlight the selection)
+    m_textEditor->setTextCursor( cursor );
+
+    // Scroll to make the selection visible
+    m_textEditor->ensureCursorVisible();
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void MainWindow::selectObjectAtTextPosition( int lineNumber )
+{
+    RimDataDeck* dataDeck = getCurrentDataDeck();
+    if ( !dataDeck )
+    {
+        return;
+    }
+
+    // Find the keyword at this line
+    RimDataKeyword* keyword = dataDeck->findKeywordAtLine( lineNumber );
+    if ( !keyword )
+    {
+        return;
+    }
+
+    // Select the keyword in the tree
+    m_pdmUiTreeView->selectAsCurrentItem( keyword );
+
+    // Update property view
+    m_pdmUiPropertyView->showProperties( keyword );
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void MainWindow::slotTextCursorChanged()
+{
+    if ( !m_textEditor || m_updatingFromTree )
+    {
+        return;
+    }
+
+    // Get current cursor position
+    QTextCursor cursor = m_textEditor->textCursor();
+    QTextBlock block = cursor.block();
+    int lineNumber = block.blockNumber() + 1; // Convert from 0-based to 1-based
+
+    // Select corresponding object in tree (but don't highlight text to avoid recursion)
+    selectObjectAtTextPosition( lineNumber );
 }

@@ -46,6 +46,8 @@ private:
     // Text editor synchronization
     void        updateTextEditor();
     RimDataDeck* getCurrentDataDeck();
+    void        highlightTextRange( int startLine, int endLine );
+    void        selectObjectAtTextPosition( int lineNumber );
 
 private slots:
     void slotNewProject();
@@ -59,6 +61,7 @@ private slots:
     void slotSyncTextToTree();
     void slotSyncTreeToText();
     void slotTextEditorModified( bool modified );
+    void slotTextCursorChanged();
 
 private:
     static MainWindow* sm_mainWindowInstance;
@@ -78,4 +81,7 @@ private:
     QMenu*      m_recentFilesMenu;
     QAction*    m_openLastUsedAction;
     static constexpr int MAX_RECENT_FILES = 10;
+
+    // Synchronization state
+    bool        m_updatingFromTree;
 };

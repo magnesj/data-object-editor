@@ -31,6 +31,11 @@ public:
     int     recordCount() const;
     bool    isLargeArray() const;
 
+    // Text position tracking
+    void    setTextPosition( int startLine, int endLine );
+    int     startLine() const;
+    int     endLine() const;
+
     static constexpr size_t LARGE_ARRAY_THRESHOLD = 100;
 
 protected:
@@ -48,6 +53,10 @@ private:
     caf::PdmField<bool>                         m_isLargeArray;
     caf::PdmField<QString>                      m_summary;
     caf::PdmProxyValueField<QString>            m_content;
+
+    // Text position tracking
+    caf::PdmField<int>                          m_startLine;
+    caf::PdmField<int>                          m_endLine;
 
     caf::PdmChildArrayField<RimDataItem*>       m_items;
 

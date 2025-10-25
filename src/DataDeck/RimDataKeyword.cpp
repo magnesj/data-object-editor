@@ -36,6 +36,13 @@ RimDataKeyword::RimDataKeyword()
     m_content.uiCapability()->setUiReadOnly( true );
     m_content.uiCapability()->setUiEditorTypeName( caf::PdmUiTextEditor::uiEditorTypeName() );
 
+    // Text position tracking
+    CAF_PDM_InitField( &m_startLine, "StartLine", -1, "Start Line", "", "", "" );
+    m_startLine.uiCapability()->setUiHidden( true );
+    
+    CAF_PDM_InitField( &m_endLine, "EndLine", -1, "End Line", "", "", "" );
+    m_endLine.uiCapability()->setUiHidden( true );
+
     CAF_PDM_InitFieldNoDefault( &m_items, "Items", "Items", "", "", "" );
 }
 
@@ -109,6 +116,31 @@ int RimDataKeyword::recordCount() const
 bool RimDataKeyword::isLargeArray() const
 {
     return m_isLargeArray;
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void RimDataKeyword::setTextPosition( int startLine, int endLine )
+{
+    m_startLine = startLine;
+    m_endLine = endLine;
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+int RimDataKeyword::startLine() const
+{
+    return m_startLine;
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+int RimDataKeyword::endLine() const
+{
+    return m_endLine;
 }
 
 //--------------------------------------------------------------------------------------------------
