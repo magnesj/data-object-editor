@@ -7,17 +7,6 @@
         "boost-spirit",
         "boost-system",
         "boost-test",
-        "eigen3",
-        "fast-float",
-        "fmt",
-        "pugixml",
-        "spdlog",
-        "type-lite"
-    ],
-    "overrides": [
-        {
-            "name": "fmt",
-            "version": "10.1.1"
-        }
+        "fmt"
     ]
 }

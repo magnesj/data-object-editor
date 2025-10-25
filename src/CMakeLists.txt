@@ -6,9 +6,9 @@ project(DataObjectEditorApp)
 find_package(
   Qt6
   COMPONENTS
-  REQUIRED Core Gui Widgets OpenGL Svg
+  REQUIRED Core Gui Widgets Svg
 )
-set(QT_LIBRARIES Qt6::Core Qt6::Gui Qt6::Widgets Qt6::OpenGL Qt6::Svg)
+set(QT_LIBRARIES Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Svg)
 
 # Add definitions for command framework
 add_definitions(-DUSE_COMMAND_FRAMEWORK)
@@ -23,11 +23,6 @@ qt_add_executable(
   ${PROJECT_NAME} ${PROJECT_FILES}
   $<TARGET_OBJECTS:cafCommandFeatures> # Needed for cmake version < 3.12
 )
-
-# According to ivarun this is needed on OpenSuse, and Fedora
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  list(APPEND EXTERNAL_LINK_LIBRARIES rt pthread)
-endif()
 
 target_link_libraries(
   ${PROJECT_NAME}

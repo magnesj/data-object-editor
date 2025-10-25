@@ -4,29 +4,23 @@ project(DataObjectEditor)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Enable multi-processor compilation and Unicode support
+if(MSVC)
+    add_compile_options(/MP /utf-8)
+endif()
+
 # ========================================
 # Key Configuration Flags (must set BEFORE adding subdirectories)
 # ========================================
-set(CEE_USE_QT6 ON CACHE BOOL "Use Qt6" FORCE)
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libraries" FORCE)
-set(CAF_EXCLUDE_CVF OFF CACHE BOOL "Include minimal CVF support" FORCE)
-
-# Disable ResInsight-specific features we don't need
-set(RESINSIGHT_ENABLE_GRPC OFF CACHE BOOL "Disable gRPC" FORCE)
-set(RESINSIGHT_USE_ODB_API OFF CACHE BOOL "Disable ODB" FORCE)
-set(RESINSIGHT_ENABLE_UNITY_BUILD OFF CACHE BOOL "Disable unity build" FORCE)
-set(CEE_BUILD_UNIT_TESTS OFF CACHE BOOL "Skip VizFwk tests" FORCE)
-set(CEE_BUILD_TEST_APPS OFF CACHE BOOL "Skip VizFwk test apps" FORCE)
-set(RESINSIGHT_TREAT_WARNINGS_AS_ERRORS OFF CACHE BOOL "Disable warnings as errors" FORCE)
-set(RESINSIGHT_INCLUDE_APPFWK_TESTS OFF CACHE BOOL "Skip AppFwk tests" FORCE)
+set(CAF_EXCLUDE_CVF ON CACHE BOOL "Include minimal CVF support" FORCE)
 
 # ========================================
 # vcpkg Integration
 # ========================================
 if(DEFINED ENV{VCPKG_ROOT})
     set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
-elseif(EXISTS "${CMAKE_SOURCE_DIR}/external/ResInsight/ThirdParty/vcpkg/scripts/buildsystems/vcpkg.cmake")
-    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/external/ResInsight/ThirdParty/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+elseif(EXISTS "${CMAKE_SOURCE_DIR}/external/vcpkg/scripts/buildsystems/vcpkg.cmake")
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/external/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
 endif()
 
 # ========================================
@@ -36,7 +30,6 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGL OpenGLWidgets Svg)
 set(QT_LIBRARIES Qt6::Core Qt6::Gui Qt6::Widgets Qt6::OpenGL Qt6::OpenGLWidgets Qt6::Svg)
 qt_standard_project_setup()
 
-find_package(OpenGL REQUIRED)
 find_package(Boost REQUIRED COMPONENTS filesystem regex system)
 
 # ========================================
@@ -53,11 +46,6 @@ set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(ENABLE_MOCKSIM OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(external/ResInsight/ThirdParty/custom-opm-common)
-
-# ========================================
-# Minimal VizFwk (LibCore only for CVF types)
-# ========================================
-add_subdirectory(external/ResInsight/Fwk/VizFwk/LibCore)
 
 # ========================================
 # AppFwk Components
@@ -85,17 +73,10 @@ add_subdirectory(external/ResInsight/Fwk/AppFwk/cafAnimControl)
 # Data Loader
 add_subdirectory(external/ResInsight/Fwk/AppFwk/cafDataLoader)
 
-# CVF Integration (requires LibCore)
-add_subdirectory(external/ResInsight/Fwk/AppFwk/cafPdmCvf)
-
-# Tensor Support (requires LibCore)
-add_subdirectory(external/ResInsight/Fwk/AppFwk/cafTensor)
-
 set(APP_FWK_LIBRARIES
     cafCommandFeatures
     cafCommand
     cafUserInterface
-    cafPdmCvf
     cafPdmScripting
     cafProjectDataModel
     cafPdmXml
@@ -103,13 +84,7 @@ set(APP_FWK_LIBRARIES
     cafPdmCore
     cafAnimControl
     cafDataLoader
-    cafTensor
-    LibCore
 )
-
-# Set folder organization for IDE
-set_property(TARGET ${APP_FWK_LIBRARIES} PROPERTY FOLDER "AppFwk")
-set_property(TARGET custom-opm-common PROPERTY FOLDER "ThirdParty")
 
 # ========================================
 # Application

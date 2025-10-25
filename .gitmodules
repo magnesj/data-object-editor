@@ -1,3 +1,6 @@
 [submodule "external/ResInsight"]
 	path = external/ResInsight
 	url = https://github.com/OPM/ResInsight.git
+[submodule "external/vcpkg"]
+	path = external/vcpkg
+	url = https://github.com/microsoft/vcpkg.git

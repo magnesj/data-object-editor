@@ -239,7 +239,7 @@ void MainWindow::slotLoadProject()
         releaseTestData();
 
         m_project = new DemoDocument();
-        m_project->readFile( fileName );
+        //m_project->readFile( fileName );
 
         m_pdmUiTreeView->setPdmItem( m_project );
         m_project->updateConnectedEditors();
@@ -260,7 +260,7 @@ void MainWindow::slotSaveProject()
 
     if ( !fileName.isEmpty() )
     {
-        m_project->writeFile( fileName );
+        //m_project->writeFile( fileName );
         statusBar()->showMessage( QString( "Saved: %1" ).arg( fileName ) );
     }
 }
