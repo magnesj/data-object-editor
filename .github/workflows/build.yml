@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        qtver: [6.4.0, 6.5.0]
+        qtver: [6.9.2]
         include:
           - os: ubuntu-latest
             compiler: gcc
@@ -39,11 +39,6 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential curl zip unzip tar flex bison ninja-build
         sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev
-
-    - name: Install Ninja (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        choco install ninja
 
     - name: Setup MSVC (Windows)
       if: matrix.os == 'windows-latest'
