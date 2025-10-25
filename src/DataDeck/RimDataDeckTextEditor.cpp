@@ -21,15 +21,12 @@ RimDataDeckTextEditor::RimDataDeckTextEditor( QWidget* parent )
     connect( this, &RimDataDeckTextEditor::updateRequest, this, &RimDataDeckTextEditor::updateLineNumberArea );
     connect( this, &RimDataDeckTextEditor::cursorPositionChanged, this, &RimDataDeckTextEditor::highlightCurrentLine );
 
-    updateLineNumberAreaWidth( 0 );
-    highlightCurrentLine();
-
     // Setup syntax highlighting
     m_syntaxHighlighter = new DataFileSyntaxHighlighter( document() );
 
     // Setup font
     QFont font;
-    font.setFamily( "Courier" );
+    font.setFamily( "Cascadia Mono" );
     font.setStyleHint( QFont::Monospace );
     font.setPointSize( 10 );
     setFont( font );
@@ -37,6 +34,10 @@ RimDataDeckTextEditor::RimDataDeckTextEditor( QWidget* parent )
     // Tab width (4 spaces)
     QFontMetrics metrics( font );
     setTabStopDistance( 4 * metrics.horizontalAdvance( ' ' ) );
+
+    // Update line number area and margins after font is set
+    updateLineNumberAreaWidth( 0 );
+    highlightCurrentLine();
 
     // Connect modification signal
     connect( document(), &QTextDocument::modificationChanged, this, &RimDataDeckTextEditor::modificationChanged );
@@ -106,7 +107,7 @@ int RimDataDeckTextEditor::lineNumberAreaWidth()
         ++digits;
     }
 
-    int space = 3 + fontMetrics().horizontalAdvance( QLatin1Char( '9' ) ) * digits;
+    int space = 10 + fontMetrics().horizontalAdvance( QLatin1Char( '9' ) ) * digits;
 
     return space;
 }
@@ -116,7 +117,8 @@ int RimDataDeckTextEditor::lineNumberAreaWidth()
 //--------------------------------------------------------------------------------------------------
 void RimDataDeckTextEditor::updateLineNumberAreaWidth( int /* newBlockCount */ )
 {
-    setViewportMargins( lineNumberAreaWidth(), 0, 0, 0 );
+    int width = lineNumberAreaWidth();
+    setViewportMargins( width, 0, 0, 0 );
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -172,7 +174,7 @@ void RimDataDeckTextEditor::highlightCurrentLine()
 void RimDataDeckTextEditor::lineNumberAreaPaintEvent( QPaintEvent* event )
 {
     QPainter painter( m_lineNumberArea );
-    painter.fillRect( event->rect(), Qt::lightGray );
+    painter.fillRect( event->rect(), palette().color( QPalette::Base ) );
 
     QTextBlock block       = firstVisibleBlock();
     int        blockNumber = block.blockNumber();
@@ -184,8 +186,8 @@ void RimDataDeckTextEditor::lineNumberAreaPaintEvent( QPaintEvent* event )
         if ( block.isVisible() && bottom >= event->rect().top() )
         {
             QString number = QString::number( blockNumber + 1 );
-            painter.setPen( Qt::black );
-            painter.drawText( 0, top, m_lineNumberArea->width(), fontMetrics().height(), Qt::AlignRight, number );
+            painter.setPen( Qt::gray );
+            painter.drawText( 0, top, m_lineNumberArea->width() - 8, fontMetrics().height(), Qt::AlignRight, number );
         }
 
         block  = block.next();
