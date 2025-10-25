@@ -3,6 +3,7 @@
 #include "cafPdmObject.h"
 #include "cafPdmField.h"
 #include "cafPdmChildArrayField.h"
+#include "cafPdmProxyValueField.h"
 
 #include <memory>
 
@@ -34,16 +35,19 @@ public:
 
 protected:
     void defineUiOrdering( QString uiConfigName, caf::PdmUiOrdering& uiOrdering ) override;
+    void defineEditorAttribute( const caf::PdmFieldHandle* field, QString uiConfigName, caf::PdmUiEditorAttribute* attribute ) override;
 
 private:
     void buildItemsFromKeyword();
     QString generateSummary() const;
+    QString formatKeywordContent() const;
 
 private:
     caf::PdmField<QString>                      m_keywordName;
     caf::PdmField<int>                          m_recordCount;
     caf::PdmField<bool>                         m_isLargeArray;
     caf::PdmField<QString>                      m_summary;
+    caf::PdmProxyValueField<QString>            m_content;
 
     caf::PdmChildArrayField<RimDataItem*>       m_items;
 

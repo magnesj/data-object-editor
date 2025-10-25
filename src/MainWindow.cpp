@@ -7,6 +7,8 @@
 #include "cafPdmChildArrayField.h"
 #include "cafPdmUiPropertyView.h"
 #include "cafPdmUiTreeView.h"
+#include "cafPdmUiItem.h"
+#include "cafPdmUiObjectHandle.h"
 #include "cafSelectionManager.h"
 
 // DataDeck includes
@@ -17,8 +19,11 @@
 #include <QAction>
 #include <QDockWidget>
 #include <QFileDialog>
+#include <QFileInfo>
+#include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QSettings>
 #include <QStatusBar>
 
 //==================================================================================================
@@ -78,6 +83,8 @@ MainWindow::MainWindow()
     : m_pdmUiTreeView( nullptr )
     , m_pdmUiPropertyView( nullptr )
     , m_project( nullptr )
+    , m_recentFilesMenu( nullptr )
+    , m_openLastUsedAction( nullptr )
 {
     sm_mainWindowInstance = this;
 
@@ -87,6 +94,9 @@ MainWindow::MainWindow()
 
     // Create dock panels
     createDockPanels();
+
+    // Load recent files from settings
+    loadRecentFiles();
 
     // Create actions and menus
     createActions();
@@ -101,6 +111,17 @@ MainWindow::MainWindow()
 
 MainWindow::~MainWindow()
 {
+    // Clear UI views before deleting objects to avoid CAF_ASSERT
+    if ( m_pdmUiTreeView )
+    {
+        m_pdmUiTreeView->setPdmItem( nullptr );
+    }
+
+    if ( m_pdmUiPropertyView )
+    {
+        m_pdmUiPropertyView->showProperties( nullptr );
+    }
+
     releaseTestData();
     sm_mainWindowInstance = nullptr;
 }
@@ -142,7 +163,7 @@ void MainWindow::createDockPanels()
     }
 
     // Connect tree view selection to property view
-    connect( m_pdmUiTreeView, SIGNAL( selectionChanged() ), this, SLOT( slotLoadProject() ) );
+    connect( m_pdmUiTreeView, SIGNAL( selectionChanged() ), this, SLOT( slotSelectionChanged() ) );
 }
 
 void MainWindow::createMenus()
@@ -161,6 +182,18 @@ void MainWindow::createMenus()
     connect( importDataAction, &QAction::triggered, this, &MainWindow::slotImportDataFile );
     fileMenu->addAction( importDataAction );
 
+    // Open Last Used DATA File
+    m_openLastUsedAction = new QAction( "Open &Last Used DATA File", this );
+    m_openLastUsedAction->setEnabled( !mostRecentFile().isEmpty() );
+    connect( m_openLastUsedAction, &QAction::triggered, this, &MainWindow::slotOpenLastUsedDataFile );
+    fileMenu->addAction( m_openLastUsedAction );
+
+    fileMenu->addSeparator();
+
+    // Recent Files submenu
+    m_recentFilesMenu = fileMenu->addMenu( "&Recent DATA Files" );
+    updateRecentFilesMenu();
+
     fileMenu->addSeparator();
 
     QAction* exitAction = new QAction( "E&xit", this );
@@ -178,6 +211,17 @@ void MainWindow::createMenus()
 
 void MainWindow::buildTestModel()
 {
+    // Clear UI views before deleting old project
+    if ( m_pdmUiTreeView )
+    {
+        m_pdmUiTreeView->setPdmItem( nullptr );
+    }
+
+    if ( m_pdmUiPropertyView )
+    {
+        m_pdmUiPropertyView->showProperties( nullptr );
+    }
+
     releaseTestData();
 
     // Create the document
@@ -240,20 +284,65 @@ void MainWindow::slotImportDataFile()
         return;
     }
 
-    RimDataDeck* dataDeck = RicImportDataDeckFeature::showImportDialog( this );
+    QString filePath = QFileDialog::getOpenFileName( this,
+                                                      "Import Eclipse DATA File",
+                                                      "",
+                                                      "Eclipse DATA Files (*.DATA *.data);;All Files (*.*)" );
 
-    if ( dataDeck )
+    if ( !filePath.isEmpty() )
     {
-        DemoDocument* doc = dynamic_cast<DemoDocument*>( m_project );
-        if ( doc )
+        importDataFile( filePath );
+    }
+}
+
+void MainWindow::slotOpenLastUsedDataFile()
+{
+    if ( !m_project )
+    {
+        QMessageBox::warning( this, "Open Last Used DATA File", "No project loaded!" );
+        return;
+    }
+
+    QString lastFile = mostRecentFile();
+    if ( !lastFile.isEmpty() )
+    {
+        importDataFile( lastFile );
+    }
+}
+
+void MainWindow::slotOpenRecentFile()
+{
+    if ( !m_project )
+    {
+        QMessageBox::warning( this, "Open Recent File", "No project loaded!" );
+        return;
+    }
+
+    QAction* action = qobject_cast<QAction*>( sender() );
+    if ( action )
+    {
+        QString filePath = action->data().toString();
+        importDataFile( filePath );
+    }
+}
+
+void MainWindow::slotSelectionChanged()
+{
+    std::vector<caf::PdmUiItem*> selection;
+    m_pdmUiTreeView->selectedUiItems( selection );
+
+    caf::PdmObjectHandle* obj = nullptr;
+
+    if ( !selection.empty() )
+    {
+        caf::PdmUiObjectHandle* pdmUiObj = dynamic_cast<caf::PdmUiObjectHandle*>( selection[0] );
+        if ( pdmUiObj )
         {
-            doc->m_dataDecks.push_back( dataDeck );
-            m_project->updateConnectedEditors();
-            statusBar()->showMessage( QString( "Imported: %1 with %2 keywords" )
-                                          .arg( dataDeck->filePath() )
-                                          .arg( dataDeck->keywordCount() ) );
+            obj = pdmUiObj->objectHandle();
         }
     }
+
+    m_pdmUiPropertyView->showProperties( obj );
 }
 
 void MainWindow::slotAbout()
@@ -265,4 +354,158 @@ void MainWindow::slotAbout()
                         "- AppFwk (Application Framework)\n"
                         "- opm-common\n\n"
                         "Built with Qt6 and C++23" );
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void MainWindow::loadRecentFiles()
+{
+    QSettings settings( "Ceetron", "DataObjectEditor" );
+    m_recentFiles = settings.value( "recentFiles" ).toStringList();
+
+    // Remove files that no longer exist
+    QStringList validFiles;
+    for ( const QString& file : m_recentFiles )
+    {
+        if ( QFileInfo::exists( file ) )
+        {
+            validFiles.append( file );
+        }
+    }
+    m_recentFiles = validFiles;
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void MainWindow::saveRecentFiles()
+{
+    QSettings settings( "Ceetron", "DataObjectEditor" );
+    settings.setValue( "recentFiles", m_recentFiles );
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void MainWindow::addRecentFile( const QString& filePath )
+{
+    // Remove if already in list
+    m_recentFiles.removeAll( filePath );
+
+    // Add to front
+    m_recentFiles.prepend( filePath );
+
+    // Keep only MAX_RECENT_FILES
+    while ( m_recentFiles.size() > MAX_RECENT_FILES )
+    {
+        m_recentFiles.removeLast();
+    }
+
+    // Save and update menu
+    saveRecentFiles();
+    updateRecentFilesMenu();
+
+    // Enable "Open Last Used" action
+    if ( m_openLastUsedAction )
+    {
+        m_openLastUsedAction->setEnabled( true );
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void MainWindow::updateRecentFilesMenu()
+{
+    if ( !m_recentFilesMenu )
+    {
+        return;
+    }
+
+    m_recentFilesMenu->clear();
+
+    if ( m_recentFiles.isEmpty() )
+    {
+        QAction* emptyAction = m_recentFilesMenu->addAction( "(No recent files)" );
+        emptyAction->setEnabled( false );
+        return;
+    }
+
+    for ( int i = 0; i < m_recentFiles.size(); ++i )
+    {
+        const QString& filePath = m_recentFiles[i];
+        QFileInfo      fileInfo( filePath );
+
+        QString actionText = QString( "&%1 %2" ).arg( i + 1 ).arg( fileInfo.fileName() );
+        QAction* action    = m_recentFilesMenu->addAction( actionText );
+        action->setData( filePath );
+        action->setToolTip( filePath );
+        action->setStatusTip( filePath );
+        connect( action, &QAction::triggered, this, &MainWindow::slotOpenRecentFile );
+    }
+
+    m_recentFilesMenu->addSeparator();
+
+    QAction* clearAction = m_recentFilesMenu->addAction( "Clear Recent Files" );
+    connect( clearAction, &QAction::triggered, this, [this]() {
+        m_recentFiles.clear();
+        saveRecentFiles();
+        updateRecentFilesMenu();
+        if ( m_openLastUsedAction )
+        {
+            m_openLastUsedAction->setEnabled( false );
+        }
+    } );
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+QString MainWindow::mostRecentFile() const
+{
+    if ( m_recentFiles.isEmpty() )
+    {
+        return QString();
+    }
+    return m_recentFiles.first();
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+bool MainWindow::importDataFile( const QString& filePath )
+{
+    if ( !m_project )
+    {
+        return false;
+    }
+
+    RimDataDeck* dataDeck = RicImportDataDeckFeature::importDataFile( filePath );
+
+    if ( dataDeck )
+    {
+        DemoDocument* doc = dynamic_cast<DemoDocument*>( m_project );
+        if ( doc )
+        {
+            doc->m_dataDecks.push_back( dataDeck );
+            m_project->updateConnectedEditors();
+
+            // Add to recent files
+            addRecentFile( filePath );
+
+            statusBar()->showMessage( QString( "Imported: %1 with %2 keywords" )
+                                          .arg( dataDeck->filePath() )
+                                          .arg( dataDeck->keywordCount() ) );
+            return true;
+        }
+    }
+    else
+    {
+        QMessageBox::critical( this,
+                               "Import Failed",
+                               QString( "Failed to import DATA file:\n%1" ).arg( filePath ) );
+    }
+
+    return false;
 }

@@ -2,9 +2,12 @@
 #include "RimDataItem.h"
 
 #include "cafPdmUiOrdering.h"
+#include "cafPdmUiTextEditor.h"
 
 #include "opm/input/eclipse/Deck/DeckKeyword.hpp"
 #include "opm/input/eclipse/Deck/DeckRecord.hpp"
+
+#include <QFont>
 
 CAF_PDM_SOURCE_INIT( RimDataKeyword, "DataKeyword" );
 
@@ -27,6 +30,11 @@ RimDataKeyword::RimDataKeyword()
 
     CAF_PDM_InitField( &m_summary, "Summary", QString( "" ), "Summary", "", "", "" );
     m_summary.uiCapability()->setUiReadOnly( true );
+
+    CAF_PDM_InitFieldNoDefault( &m_content, "Content", "Keyword Content", "", "", "" );
+    m_content.registerGetMethod( this, &RimDataKeyword::formatKeywordContent );
+    m_content.uiCapability()->setUiReadOnly( true );
+    m_content.uiCapability()->setUiEditorTypeName( caf::PdmUiTextEditor::uiEditorTypeName() );
 
     CAF_PDM_InitFieldNoDefault( &m_items, "Items", "Items", "", "", "" );
 }
@@ -115,8 +123,36 @@ void RimDataKeyword::defineUiOrdering( QString uiConfigName, caf::PdmUiOrdering&
     {
         uiOrdering.add( &m_summary );
     }
+    else
+    {
+        // For non-large arrays, show the formatted content
+        uiOrdering.add( &m_content );
+    }
 
     uiOrdering.skipRemainingFields( true );
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void RimDataKeyword::defineEditorAttribute( const caf::PdmFieldHandle* field, QString uiConfigName, caf::PdmUiEditorAttribute* attribute )
+{
+    if ( field == &m_content )
+    {
+        auto* textEditAttr = dynamic_cast<caf::PdmUiTextEditorAttribute*>( attribute );
+        if ( textEditAttr )
+        {
+            textEditAttr->textMode = caf::PdmUiTextEditorAttribute::PLAIN;
+            textEditAttr->wrapMode = caf::PdmUiTextEditorAttribute::NoWrap;
+            textEditAttr->heightHint = 300; // Height in pixels
+
+            // Use monospace font for better alignment
+            QFont font( "Courier" );
+            font.setStyleHint( QFont::Monospace );
+            font.setPointSize( 9 );
+            textEditAttr->font = font;
+        }
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -211,4 +247,92 @@ QString RimDataKeyword::generateSummary() const
         .arg( totalItems )
         .arg( m_recordCount() )
         .arg( dataType );
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+QString RimDataKeyword::formatKeywordContent() const
+{
+    if ( !m_deckKeyword )
+    {
+        return QString( "" );
+    }
+
+    QStringList lines;
+
+    // Add keyword header
+    lines.append( QString( "%1" ).arg( m_keywordName() ) );
+
+    // Limit number of records to display
+    const size_t maxRecordsToShow = 50;
+    size_t recordsToShow = std::min( m_deckKeyword->size(), maxRecordsToShow );
+
+    for ( size_t recIdx = 0; recIdx < recordsToShow; ++recIdx )
+    {
+        const auto& record = m_deckKeyword->getRecord( recIdx );
+
+        QStringList itemValues;
+
+        for ( size_t itemIdx = 0; itemIdx < record.size(); ++itemIdx )
+        {
+            const auto& item = record.getItem( itemIdx );
+
+            if ( !item.hasValue( 0 ) )
+            {
+                itemValues.append( "*" ); // Defaulted
+                continue;
+            }
+
+            try
+            {
+                if ( item.getType() == Opm::type_tag::integer )
+                {
+                    itemValues.append( QString::number( item.get<int>( 0 ) ) );
+                }
+                else if ( item.getType() == Opm::type_tag::fdouble )
+                {
+                    itemValues.append( QString::number( item.get<double>( 0 ), 'g', 10 ) );
+                }
+                else if ( item.getType() == Opm::type_tag::string )
+                {
+                    QString strValue = QString::fromStdString( item.get<std::string>( 0 ) );
+                    // Quote strings if they contain spaces or are keywords
+                    if ( strValue.contains( ' ' ) || strValue.isEmpty() )
+                    {
+                        itemValues.append( QString( "'%1'" ).arg( strValue ) );
+                    }
+                    else
+                    {
+                        itemValues.append( strValue );
+                    }
+                }
+            }
+            catch ( ... )
+            {
+                itemValues.append( "<error>" );
+            }
+        }
+
+        // Format record line
+        QString recordLine = "  " + itemValues.join( "  " );
+
+        // Add trailing / for Eclipse format
+        if ( !recordLine.trimmed().isEmpty() )
+        {
+            recordLine += "  /";
+        }
+
+        lines.append( recordLine );
+    }
+
+    if ( m_deckKeyword->size() > maxRecordsToShow )
+    {
+        lines.append( QString( "  ... (%1 more records not shown)" ).arg( m_deckKeyword->size() - maxRecordsToShow ) );
+    }
+
+    // Add closing /
+    lines.append( "/" );
+
+    return lines.join( "\n" );
 }
