@@ -40,9 +40,8 @@ jobs:
         sudo apt-get install -y build-essential curl zip unzip tar flex bison ninja-build
         sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev
 
-    - name: Setup MSVC (Windows)
-      if: matrix.os == 'windows-latest'
-      uses: microsoft/setup-msbuild@v2
+    - name: Use MSVC (Windows)
+      uses: ilammy/msvc-dev-cmd@v1
 
     - name: Bootstrap vcpkg (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
