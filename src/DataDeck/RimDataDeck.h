@@ -26,10 +26,13 @@ public:
 
     bool loadFromFile( const QString& filePath );
     void setDeck( std::shared_ptr<Opm::Deck> deck, const QString& filePath );
+    bool updateFromDeck( std::shared_ptr<Opm::Deck> deck );
 
     QString             filePath() const;
     int                 keywordCount() const;
     std::shared_ptr<Opm::Deck> deck() const;
+
+    QString serializeToText() const;
 
 protected:
     void defineUiOrdering( QString uiConfigName, caf::PdmUiOrdering& uiOrdering ) override;

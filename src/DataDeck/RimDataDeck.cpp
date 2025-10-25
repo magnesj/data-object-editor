@@ -1,15 +1,20 @@
 #include "RimDataDeck.h"
 #include "RimDataSection.h"
 #include "RimDataKeyword.h"
+#include "RimDataItem.h"
 
 #include "cafPdmUiOrdering.h"
 
 #include "opm/input/eclipse/Deck/Deck.hpp"
+#include "opm/input/eclipse/Deck/DeckKeyword.hpp"
+#include "opm/input/eclipse/Deck/DeckRecord.hpp"
 #include "opm/input/eclipse/Parser/Parser.hpp"
 #include "opm/input/eclipse/Parser/ParseContext.hpp"
 #include "opm/input/eclipse/Parser/InputErrorAction.hpp"
 
 #include <QFileInfo>
+#include <QFile>
+#include <QTextStream>
 #include <stdexcept>
 
 CAF_PDM_SOURCE_INIT( RimDataDeck, "DataDeck" );
@@ -183,4 +188,139 @@ void RimDataDeck::buildSectionsFromDeck()
             currentSection->addKeyword( dataKeyword );
         }
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+bool RimDataDeck::updateFromDeck( std::shared_ptr<Opm::Deck> deck )
+{
+    if ( !deck )
+    {
+        return false;
+    }
+
+    m_deck         = deck;
+    m_keywordCount = static_cast<int>( m_deck->size() );
+
+    // Clear existing sections
+    m_sections.deleteChildren();
+
+    // Rebuild from new deck
+    buildSectionsFromDeck();
+
+    // Update all connected editors
+    updateConnectedEditors();
+
+    return true;
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+QString RimDataDeck::serializeToText() const
+{
+    if ( !m_deck )
+    {
+        return QString();
+    }
+
+    QStringList lines;
+
+    // Try to read original file if it exists
+    if ( QFileInfo::exists( m_filePath ) )
+    {
+        QFile file( m_filePath );
+        if ( file.open( QIODevice::ReadOnly | QIODevice::Text ) )
+        {
+            QTextStream in( &file );
+            QString     content = in.readAll();
+            file.close();
+            return content;
+        }
+    }
+
+    // Otherwise, serialize from deck structure
+    for ( size_t i = 0; i < m_deck->size(); ++i )
+    {
+        const Opm::DeckKeyword& keyword     = ( *m_deck )[i];
+        QString                 keywordName = QString::fromStdString( keyword.name() );
+
+        // Check if this is a section keyword
+        bool isSection = ( keywordName == "RUNSPEC" || keywordName == "GRID" || keywordName == "EDIT" ||
+                           keywordName == "PROPS" || keywordName == "REGIONS" || keywordName == "SOLUTION" ||
+                           keywordName == "SUMMARY" || keywordName == "SCHEDULE" );
+
+        if ( isSection )
+        {
+            // Add blank line before section
+            if ( !lines.isEmpty() )
+            {
+                lines.append( "" );
+            }
+            lines.append( keywordName );
+            lines.append( "" );
+        }
+        else
+        {
+            // Regular keyword
+            lines.append( keywordName );
+
+            // Add records
+            for ( size_t recIdx = 0; recIdx < keyword.size(); ++recIdx )
+            {
+                const auto& record = keyword.getRecord( recIdx );
+
+                QStringList itemValues;
+                for ( size_t itemIdx = 0; itemIdx < record.size(); ++itemIdx )
+                {
+                    const auto& item = record.getItem( itemIdx );
+
+                    if ( !item.hasValue( 0 ) )
+                    {
+                        itemValues.append( "*" );
+                        continue;
+                    }
+
+                    try
+                    {
+                        if ( item.getType() == Opm::type_tag::integer )
+                        {
+                            itemValues.append( QString::number( item.get<int>( 0 ) ) );
+                        }
+                        else if ( item.getType() == Opm::type_tag::fdouble )
+                        {
+                            itemValues.append( QString::number( item.get<double>( 0 ), 'g', 10 ) );
+                        }
+                        else if ( item.getType() == Opm::type_tag::string )
+                        {
+                            QString strValue = QString::fromStdString( item.get<std::string>( 0 ) );
+                            if ( strValue.contains( ' ' ) || strValue.isEmpty() )
+                            {
+                                itemValues.append( QString( "'%1'" ).arg( strValue ) );
+                            }
+                            else
+                            {
+                                itemValues.append( strValue );
+                            }
+                        }
+                    }
+                    catch ( ... )
+                    {
+                        itemValues.append( "*" );
+                    }
+                }
+
+                if ( !itemValues.isEmpty() )
+                {
+                    lines.append( "  " + itemValues.join( "  " ) + "  /" );
+                }
+            }
+
+            lines.append( "/" );
+            lines.append( "" );
+        }
+    }
+
+    return lines.join( "\n" );
 }

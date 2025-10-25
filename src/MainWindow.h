@@ -5,6 +5,9 @@
 
 class QMenu;
 class QAction;
+class QToolBar;
+class RimDataDeckTextEditor;
+class RimDataDeck;
 
 namespace caf
 {
@@ -28,6 +31,7 @@ private:
     void createActions();
     void createDockPanels();
     void createMenus();
+    void createToolBar();
     void buildTestModel();
     void releaseTestData();
 
@@ -39,6 +43,10 @@ private:
     QString     mostRecentFile() const;
     bool        importDataFile( const QString& filePath );
 
+    // Text editor synchronization
+    void        updateTextEditor();
+    RimDataDeck* getCurrentDataDeck();
+
 private slots:
     void slotNewProject();
     void slotImportDataFile();
@@ -47,12 +55,23 @@ private slots:
     void slotSelectionChanged();
     void slotAbout();
 
+    // Text editor synchronization
+    void slotSyncTextToTree();
+    void slotSyncTreeToText();
+    void slotTextEditorModified( bool modified );
+
 private:
     static MainWindow* sm_mainWindowInstance;
 
     caf::PdmUiTreeView*     m_pdmUiTreeView;
     caf::PdmUiPropertyView* m_pdmUiPropertyView;
     caf::PdmDocument*       m_project;
+
+    // Text editor
+    RimDataDeckTextEditor*  m_textEditor;
+    QToolBar*               m_textEditorToolBar;
+    QAction*                m_syncTextToTreeAction;
+    QAction*                m_syncTreeToTextAction;
 
     // Recent files
     QStringList m_recentFiles;

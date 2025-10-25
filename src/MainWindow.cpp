@@ -14,6 +14,7 @@
 // DataDeck includes
 #include "DataDeck/RimDataDeck.h"
 #include "DataDeck/RicImportDataDeckFeature.h"
+#include "DataDeck/RimDataDeckTextEditor.h"
 
 // Qt includes
 #include <QAction>
@@ -25,6 +26,13 @@
 #include <QMessageBox>
 #include <QSettings>
 #include <QStatusBar>
+#include <QToolBar>
+
+// opm-common includes
+#include "opm/input/eclipse/Parser/Parser.hpp"
+#include "opm/input/eclipse/Parser/ParseContext.hpp"
+#include "opm/input/eclipse/Parser/InputErrorAction.hpp"
+#include "opm/input/eclipse/Deck/Deck.hpp"
 
 //==================================================================================================
 /// Demo PDM Document - Root object for the project
@@ -83,14 +91,18 @@ MainWindow::MainWindow()
     : m_pdmUiTreeView( nullptr )
     , m_pdmUiPropertyView( nullptr )
     , m_project( nullptr )
+    , m_textEditor( nullptr )
+    , m_textEditorToolBar( nullptr )
+    , m_syncTextToTreeAction( nullptr )
+    , m_syncTreeToTextAction( nullptr )
     , m_recentFilesMenu( nullptr )
     , m_openLastUsedAction( nullptr )
 {
     sm_mainWindowInstance = this;
 
-    // Set up the central widget
-    QWidget* centralWidget = new QWidget( this );
-    setCentralWidget( centralWidget );
+    // Create text editor as central widget
+    m_textEditor = new RimDataDeckTextEditor( this );
+    setCentralWidget( m_textEditor );
 
     // Create dock panels
     createDockPanels();
@@ -101,9 +113,17 @@ MainWindow::MainWindow()
     // Create actions and menus
     createActions();
     createMenus();
+    createToolBar();
 
     // Create a test model
     buildTestModel();
+
+    // Auto-open last used DATA file
+    QString lastFile = mostRecentFile();
+    if ( !lastFile.isEmpty() && QFileInfo::exists( lastFile ) )
+    {
+        importDataFile( lastFile );
+    }
 
     // Status bar
     statusBar()->showMessage( "Ready" );
@@ -139,6 +159,7 @@ void MainWindow::createActions()
 void MainWindow::createDockPanels()
 {
     // Create tree view dock
+    QDockWidget* treeDock = nullptr;
     {
         QDockWidget* dockWidget = new QDockWidget( "Project Tree", this );
         dockWidget->setObjectName( "dockWidget" );
@@ -148,9 +169,10 @@ void MainWindow::createDockPanels()
         dockWidget->setWidget( m_pdmUiTreeView );
 
         addDockWidget( Qt::LeftDockWidgetArea, dockWidget );
+        treeDock = dockWidget;
     }
 
-    // Create property view dock
+    // Create property view dock (below tree view)
     {
         QDockWidget* dockWidget = new QDockWidget( "Properties", this );
         dockWidget->setObjectName( "propertiesPanel" );
@@ -159,10 +181,16 @@ void MainWindow::createDockPanels()
         m_pdmUiPropertyView = new caf::PdmUiPropertyView( dockWidget );
         dockWidget->setWidget( m_pdmUiPropertyView );
 
-        addDockWidget( Qt::RightDockWidgetArea, dockWidget );
+        addDockWidget( Qt::LeftDockWidgetArea, dockWidget );
+
+        // Stack property view below tree view
+        splitDockWidget( treeDock, dockWidget, Qt::Vertical );
     }
 
-    // Connect tree view selection to property view
+    // Connect text editor modification signal
+    connect( m_textEditor, &RimDataDeckTextEditor::modificationChanged, this, &MainWindow::slotTextEditorModified );
+
+    // Connect tree view selection to property view and text editor
     connect( m_pdmUiTreeView, SIGNAL( selectionChanged() ), this, SLOT( slotSelectionChanged() ) );
 }
 
@@ -207,6 +235,26 @@ void MainWindow::createMenus()
     QAction* aboutAction = new QAction( "&About", this );
     connect( aboutAction, &QAction::triggered, this, &MainWindow::slotAbout );
     helpMenu->addAction( aboutAction );
+}
+
+void MainWindow::createToolBar()
+{
+    m_textEditorToolBar = addToolBar( "Text Editor Tools" );
+    m_textEditorToolBar->setObjectName( "textEditorToolBar" );
+
+    // Sync Tree to Text action
+    m_syncTreeToTextAction = new QAction( "Sync to Text", this );
+    m_syncTreeToTextAction->setToolTip( "Synchronize selected DATA file to text editor" );
+    m_syncTreeToTextAction->setEnabled( false );
+    connect( m_syncTreeToTextAction, &QAction::triggered, this, &MainWindow::slotSyncTreeToText );
+    m_textEditorToolBar->addAction( m_syncTreeToTextAction );
+
+    // Sync Text to Tree action
+    m_syncTextToTreeAction = new QAction( "Sync to Tree", this );
+    m_syncTextToTreeAction->setToolTip( "Parse text and update object tree" );
+    m_syncTextToTreeAction->setEnabled( false );
+    connect( m_syncTextToTreeAction, &QAction::triggered, this, &MainWindow::slotSyncTextToTree );
+    m_textEditorToolBar->addAction( m_syncTextToTreeAction );
 }
 
 void MainWindow::buildTestModel()
@@ -343,6 +391,9 @@ void MainWindow::slotSelectionChanged()
     }
 
     m_pdmUiPropertyView->showProperties( obj );
+
+    // Update text editor
+    updateTextEditor();
 }
 
 void MainWindow::slotAbout()
@@ -508,4 +559,161 @@ bool MainWindow::importDataFile( const QString& filePath )
     }
 
     return false;
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void MainWindow::updateTextEditor()
+{
+    RimDataDeck* dataDeck = getCurrentDataDeck();
+
+    if ( dataDeck && m_textEditor )
+    {
+        m_textEditor->setDataDeck( dataDeck );
+        m_syncTreeToTextAction->setEnabled( true );
+        m_syncTextToTreeAction->setEnabled( false ); // Only enable after modifications
+    }
+    else
+    {
+        if ( m_textEditor )
+        {
+            m_textEditor->setDataDeck( nullptr );
+        }
+        m_syncTreeToTextAction->setEnabled( false );
+        m_syncTextToTreeAction->setEnabled( false );
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+RimDataDeck* MainWindow::getCurrentDataDeck()
+{
+    if ( !m_pdmUiTreeView )
+    {
+        return nullptr;
+    }
+
+    std::vector<caf::PdmUiItem*> selection;
+    m_pdmUiTreeView->selectedUiItems( selection );
+
+    if ( selection.empty() )
+    {
+        return nullptr;
+    }
+
+    // Check if selected item is a RimDataDeck
+    caf::PdmUiObjectHandle* pdmUiObj = dynamic_cast<caf::PdmUiObjectHandle*>( selection[0] );
+    if ( pdmUiObj )
+    {
+        RimDataDeck* dataDeck = dynamic_cast<RimDataDeck*>( pdmUiObj->objectHandle() );
+        if ( dataDeck )
+        {
+            return dataDeck;
+        }
+    }
+
+    return nullptr;
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void MainWindow::slotSyncTreeToText()
+{
+    if ( !m_textEditor )
+    {
+        return;
+    }
+
+    RimDataDeck* dataDeck = getCurrentDataDeck();
+    if ( !dataDeck )
+    {
+        statusBar()->showMessage( "No DATA file selected", 3000 );
+        return;
+    }
+
+    // Reload text from deck
+    m_textEditor->loadFromDeck();
+    statusBar()->showMessage( "Synchronized tree to text editor", 3000 );
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void MainWindow::slotSyncTextToTree()
+{
+    if ( !m_textEditor )
+    {
+        return;
+    }
+
+    RimDataDeck* dataDeck = getCurrentDataDeck();
+    if ( !dataDeck )
+    {
+        statusBar()->showMessage( "No DATA file selected", 3000 );
+        return;
+    }
+
+    try
+    {
+        // Get text from editor
+        QString text = m_textEditor->toPlainText();
+
+        // Write to temporary file
+        QString tempFilePath = dataDeck->filePath() + ".temp";
+        QFile   tempFile( tempFilePath );
+        if ( !tempFile.open( QIODevice::WriteOnly | QIODevice::Text ) )
+        {
+            QMessageBox::critical( this, "Sync Error", "Failed to create temporary file for parsing" );
+            return;
+        }
+
+        QTextStream out( &tempFile );
+        out << text;
+        tempFile.close();
+
+        // Parse the text
+        Opm::Parser       parser;
+        Opm::ParseContext parseContext;
+        parseContext.update( Opm::InputErrorAction::WARN );
+
+        auto newDeck = std::make_shared<Opm::Deck>( parser.parseFile( tempFilePath.toStdString(), parseContext ) );
+
+        // Delete temporary file
+        QFile::remove( tempFilePath );
+
+        // Update the data deck
+        if ( dataDeck->updateFromDeck( newDeck ) )
+        {
+            // Mark as unmodified
+            m_textEditor->document()->setModified( false );
+            m_syncTextToTreeAction->setEnabled( false );
+
+            statusBar()->showMessage( "Synchronized text to tree successfully", 3000 );
+        }
+        else
+        {
+            QMessageBox::critical( this, "Sync Error", "Failed to update DATA deck from text" );
+        }
+    }
+    catch ( const std::exception& e )
+    {
+        QMessageBox::critical( this,
+                               "Parse Error",
+                               QString( "Failed to parse text:\n%1" ).arg( e.what() ) );
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+void MainWindow::slotTextEditorModified( bool modified )
+{
+    // Enable sync to tree button when text is modified
+    if ( m_syncTextToTreeAction )
+    {
+        m_syncTextToTreeAction->setEnabled( modified && getCurrentDataDeck() != nullptr );
+    }
 }

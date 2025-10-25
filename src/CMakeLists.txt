@@ -30,6 +30,10 @@ set(DATADECK_FILES
     DataDeck/RimDataItem.cpp
     DataDeck/RicImportDataDeckFeature.h
     DataDeck/RicImportDataDeckFeature.cpp
+    DataDeck/DataFileSyntaxHighlighter.h
+    DataDeck/DataFileSyntaxHighlighter.cpp
+    DataDeck/RimDataDeckTextEditor.h
+    DataDeck/RimDataDeckTextEditor.cpp
 )
 
 qt_add_executable(
