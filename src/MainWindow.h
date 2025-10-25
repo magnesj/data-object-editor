@@ -32,8 +32,8 @@ private:
     void createDockPanels();
     void createMenus();
     void createToolBar();
-    void buildTestModel();
-    void releaseTestData();
+    void createEmptyProject();
+    void releaseProjectData();
 
     // Recent files management
     void        loadRecentFiles();

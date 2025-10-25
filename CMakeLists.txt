@@ -30,8 +30,6 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg)
 set(QT_LIBRARIES Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Svg)
 qt_standard_project_setup()
 
-find_package(Boost REQUIRED COMPONENTS filesystem regex system)
-
 # ========================================
 # opm-common Configuration
 # ========================================
@@ -67,12 +65,6 @@ add_subdirectory(external/ResInsight/Fwk/AppFwk/cafUserInterface)
 add_subdirectory(external/ResInsight/Fwk/AppFwk/cafCommand)
 add_subdirectory(external/ResInsight/Fwk/AppFwk/cafCommandFeatures)
 
-# Animation Control
-add_subdirectory(external/ResInsight/Fwk/AppFwk/cafAnimControl)
-
-# Data Loader
-add_subdirectory(external/ResInsight/Fwk/AppFwk/cafDataLoader)
-
 set(APP_FWK_LIBRARIES
     cafCommandFeatures
     cafCommand
@@ -82,8 +74,6 @@ set(APP_FWK_LIBRARIES
     cafPdmXml
     cafPdmUiCore
     cafPdmCore
-    cafAnimControl
-    cafDataLoader
 )
 
 # ========================================

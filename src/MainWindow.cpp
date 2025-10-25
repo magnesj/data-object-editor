@@ -35,51 +35,23 @@
 #include "opm/input/eclipse/Deck/Deck.hpp"
 
 //==================================================================================================
-/// Demo PDM Document - Root object for the project
+/// Project Document - Root object for the data object editor project
 //==================================================================================================
-class DemoDocument : public caf::PdmDocument
+class ProjectDocument : public caf::PdmDocument
 {
     CAF_PDM_HEADER_INIT;
 
 public:
-    DemoDocument()
+    ProjectDocument()
     {
-        CAF_PDM_InitObject( "Demo Document", "", "", "" );
-        CAF_PDM_InitFieldNoDefault( &m_objects, "Objects", "Objects", "", "", "" );
+        CAF_PDM_InitObject( "Data Object Editor Project", "", "", "" );
         CAF_PDM_InitFieldNoDefault( &m_dataDecks, "DataDecks", "DATA Files", "", "", "" );
     }
 
-    caf::PdmChildArrayField<caf::PdmObjectHandle*> m_objects;
     caf::PdmChildArrayField<RimDataDeck*> m_dataDecks;
 };
 
-CAF_PDM_SOURCE_INIT( DemoDocument, "DemoDocument" );
-
-//==================================================================================================
-/// Demo PDM Object - Simple example object with various field types
-//==================================================================================================
-class DemoObject : public caf::PdmObject
-{
-    CAF_PDM_HEADER_INIT;
-
-public:
-    DemoObject()
-    {
-        CAF_PDM_InitObject( "Demo Object", "", "", "" );
-
-        CAF_PDM_InitField( &m_name, "Name", QString( "Default Name" ), "Name", "", "", "" );
-        CAF_PDM_InitField( &m_value, "Value", 42.0, "Value", "", "", "" );
-        CAF_PDM_InitField( &m_isActive, "IsActive", true, "Is Active", "", "", "" );
-        CAF_PDM_InitField( &m_text, "Text", QString( "Sample text" ), "Description", "", "", "" );
-    }
-
-    caf::PdmField<QString> m_name;
-    caf::PdmField<double>  m_value;
-    caf::PdmField<bool>    m_isActive;
-    caf::PdmField<QString> m_text;
-};
-
-CAF_PDM_SOURCE_INIT( DemoObject, "DemoObject" );
+CAF_PDM_SOURCE_INIT( ProjectDocument, "ProjectDocument" );
 
 //==================================================================================================
 /// MainWindow implementation
@@ -115,8 +87,8 @@ MainWindow::MainWindow()
     createMenus();
     createToolBar();
 
-    // Create a test model
-    buildTestModel();
+    // Create an empty project
+    createEmptyProject();
 
     // Auto-open last used DATA file
     QString lastFile = mostRecentFile();
@@ -142,7 +114,7 @@ MainWindow::~MainWindow()
         m_pdmUiPropertyView->showProperties( nullptr );
     }
 
-    releaseTestData();
+    releaseProjectData();
     sm_mainWindowInstance = nullptr;
 }
 
@@ -257,7 +229,7 @@ void MainWindow::createToolBar()
     m_textEditorToolBar->addAction( m_syncTextToTreeAction );
 }
 
-void MainWindow::buildTestModel()
+void MainWindow::createEmptyProject()
 {
     // Clear UI views before deleting old project
     if ( m_pdmUiTreeView )
@@ -270,35 +242,10 @@ void MainWindow::buildTestModel()
         m_pdmUiPropertyView->showProperties( nullptr );
     }
 
-    releaseTestData();
+    releaseProjectData();
 
-    // Create the document
-    m_project = new DemoDocument();
-
-    // Create some demo objects
-    DemoObject* obj1 = new DemoObject();
-    obj1->m_name     = "Object 1";
-    obj1->m_value    = 100.0;
-    obj1->m_isActive = true;
-
-    DemoObject* obj2 = new DemoObject();
-    obj2->m_name     = "Object 2";
-    obj2->m_value    = 200.0;
-    obj2->m_isActive = false;
-
-    DemoObject* obj3 = new DemoObject();
-    obj3->m_name     = "Object 3";
-    obj3->m_value    = 300.0;
-    obj3->m_isActive = true;
-
-    // Add objects to document
-    DemoDocument* doc = dynamic_cast<DemoDocument*>( m_project );
-    if ( doc )
-    {
-        doc->m_objects.push_back( obj1 );
-        doc->m_objects.push_back( obj2 );
-        doc->m_objects.push_back( obj3 );
-    }
+    // Create an empty project document
+    m_project = new ProjectDocument();
 
     // Set the document as root in tree view
     m_pdmUiTreeView->setPdmItem( m_project );
@@ -306,10 +253,10 @@ void MainWindow::buildTestModel()
     // Update UI
     m_project->updateConnectedEditors();
 
-    statusBar()->showMessage( "Test model created with 3 demo objects" );
+    statusBar()->showMessage( "New project created" );
 }
 
-void MainWindow::releaseTestData()
+void MainWindow::releaseProjectData()
 {
     if ( m_project )
     {
@@ -320,8 +267,7 @@ void MainWindow::releaseTestData()
 
 void MainWindow::slotNewProject()
 {
-    buildTestModel();
-    statusBar()->showMessage( "New project created" );
+    createEmptyProject();
 }
 
 void MainWindow::slotImportDataFile()
@@ -401,7 +347,7 @@ void MainWindow::slotAbout()
     QMessageBox::about( this,
                         "About Data Object Editor",
                         "Data Object Editor\n\n"
-                        "A demonstration application using:\n"
+                        "An application for viewing and editing Eclipse DATA files using:\n"
                         "- AppFwk (Application Framework)\n"
                         "- opm-common\n\n"
                         "Built with Qt6 and C++23" );
@@ -536,7 +482,7 @@ bool MainWindow::importDataFile( const QString& filePath )
 
     if ( dataDeck )
     {
-        DemoDocument* doc = dynamic_cast<DemoDocument*>( m_project );
+        ProjectDocument* doc = dynamic_cast<ProjectDocument*>( m_project );
         if ( doc )
         {
             doc->m_dataDecks.push_back( dataDeck );

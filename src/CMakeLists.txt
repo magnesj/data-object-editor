@@ -2,13 +2,7 @@ cmake_minimum_required(VERSION 3.26)
 
 project(DataObjectEditorApp)
 
-# Qt
-find_package(
-  Qt6
-  COMPONENTS
-  REQUIRED Core Gui Widgets Svg
-)
-set(QT_LIBRARIES Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Svg)
+# Qt already configured in root CMakeLists.txt
 
 # Add definitions for command framework
 add_definitions(-DUSE_COMMAND_FRAMEWORK)
@@ -49,9 +43,6 @@ target_link_libraries(
     custom-opm-common
     ${QT_LIBRARIES}
     ${EXTERNAL_LINK_LIBRARIES}
-    Boost::filesystem
-    Boost::regex
-    Boost::system
 )
 
 # Copy Qt DLLs on Windows

@@ -3,10 +3,7 @@
     "version": "0.1.0",
     "description": "Data Object Editor using AppFwk and opm-common",
     "dependencies": [
-        "boost-filesystem",
         "boost-spirit",
-        "boost-system",
-        "boost-test",
         "fmt"
     ]
 }
