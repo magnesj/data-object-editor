@@ -74,7 +74,7 @@ jobs:
         .\bootstrap-vcpkg.bat
 
     - name: Setup buildcache
-      uses: CeetronSolutions/setup-buildcache-action@v1
+      uses: CeetronSolutions/setup-buildcache-action@main
 
     - name: Cache buildcache artifacts
       uses: actions/cache@v4
