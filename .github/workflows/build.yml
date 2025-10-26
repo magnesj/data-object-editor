@@ -76,7 +76,7 @@ jobs:
     - name: Install buildcache (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        wget https://github.com/mbitsnbites/buildcache/releases/download/v0.28.7/buildcache-linux.tar.gz
+        wget https://gitlab.com/bits-n-bites/buildcache/-/releases/v0.28.7/downloads/buildcache-linux.tar.gz
         tar -xzf buildcache-linux.tar.gz
         sudo mv buildcache/bin/buildcache /usr/local/bin/
         buildcache --version
@@ -84,7 +84,7 @@ jobs:
     - name: Install buildcache (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        curl -L -o buildcache-win64.zip https://github.com/mbitsnbites/buildcache/releases/download/v0.28.7/buildcache-win64.zip
+        curl -L -o buildcache-win64.zip https://gitlab.com/bits-n-bites/buildcache/-/releases/v0.28.7/downloads/buildcache-win64.zip
         7z x buildcache-win64.zip
         move buildcache.exe C:\Windows\System32\
         buildcache --version
