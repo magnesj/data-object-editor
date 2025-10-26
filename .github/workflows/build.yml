@@ -78,15 +78,17 @@ jobs:
       run: |
         wget https://gitlab.com/bits-n-bites/buildcache/-/releases/v0.31.5/downloads/buildcache-linux-amd64.tar.gz
         tar -xzf buildcache-linux-amd64.tar.gz
-        sudo mv buildcache/bin/buildcache /usr/local/bin/
+        echo "${{ github.workspace }}/buildcache/bin" >> $GITHUB_PATH
+        export PATH="${{ github.workspace }}/buildcache/bin:$PATH"
         buildcache --version
 
     - name: Install buildcache (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        curl -L -o buildcache-win64.zip https://gitlab.com/bits-n-bites/buildcache/-/archive/v0.31.5/buildcache-v0.31.5.zip
+        curl -L -o buildcache-win64.zip https://gitlab.com/bits-n-bites/buildcache/-/releases/v0.31.5/downloads/buildcache-win64.zip
         7z x buildcache-win64.zip
-        move buildcache.exe C:\Windows\System32\
+        echo "${{ github.workspace }}\buildcache\bin" >> $env:GITHUB_PATH
+        $env:PATH = "${{ github.workspace }}\buildcache\bin;$env:PATH"
         buildcache --version
 
     - name: Cache buildcache artifacts
