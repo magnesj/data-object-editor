@@ -65,15 +65,13 @@ jobs:
     - name: Use MSVC (Windows)
       uses: ilammy/msvc-dev-cmd@v1
 
+    - name: Set vcpkg cache environment variable
+      run: echo "VCPKG_DEFAULT_BINARY_CACHE=${{ github.workspace }}/vcpkg_cache" >> $GITHUB_ENV
+
     - name: Cache vcpkg binary cache
       uses: actions/cache@v4
       with:
-        path: |
-          external/vcpkg/downloads
-          external/vcpkg/packages
-          external/vcpkg/buildtrees
-          ~/.cache/vcpkg
-          %APPDATA%/vcpkg
+        path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
         key: vcpkg-${{ matrix.os }}-${{ matrix.qtver }}-${{ hashFiles('vcpkg.json', 'external/vcpkg/ports/**') }}
         restore-keys: |
           vcpkg-${{ matrix.os }}-${{ matrix.qtver }}-
