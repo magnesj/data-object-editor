@@ -37,7 +37,7 @@ void KeywordHelpWidget::setupUI()
     // Help text area
     m_helpText = new QTextEdit(this);
     m_helpText->setReadOnly(true);
-    m_helpText->setFont(QFont("Cascadia Mono", 9));
+    //m_helpText->setFont(QFont("Cascadia Mono", 9));
     m_helpText->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     m_helpText->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     m_layout->addWidget(m_helpText, 1); // Add with stretch factor 1 to use all available space
