@@ -30,7 +30,21 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Cache buildcache artifacts
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.buildcache
+          %USERPROFILE%\.buildcache
+        key: buildcache-${{ matrix.os }}-${{ matrix.qtver }}-${{ github.sha }}
+        restore-keys: |
+          buildcache-${{ matrix.os }}-${{ matrix.qtver }}-
+          buildcache-${{ matrix.os }}-
+
     - name: Setup buildcache
+      uses: CeetronSolutions/setup-buildcache-action@main
+
+    - name: Show buildcache statis
       run: |
         buildcache --show-stats
 
@@ -76,20 +90,6 @@ jobs:
       run: |
         cd external\vcpkg
         .\bootstrap-vcpkg.bat
-
-    - name: Setup buildcache
-      uses: CeetronSolutions/setup-buildcache-action@main
-
-    - name: Cache buildcache artifacts
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.buildcache
-          %USERPROFILE%\.buildcache
-        key: buildcache-${{ matrix.os }}-${{ matrix.qtver }}-${{ github.sha }}
-        restore-keys: |
-          buildcache-${{ matrix.os }}-${{ matrix.qtver }}-
-          buildcache-${{ matrix.os }}-
 
     - name: Configure CMake (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
