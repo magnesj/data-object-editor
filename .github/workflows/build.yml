@@ -69,13 +69,47 @@ jobs:
         cd external\vcpkg
         .\bootstrap-vcpkg.bat
 
+    - name: Install buildcache (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        wget https://github.com/mbitsnbites/buildcache/releases/download/v0.28.7/buildcache-linux.tar.gz
+        tar -xzf buildcache-linux.tar.gz
+        sudo mv buildcache/bin/buildcache /usr/local/bin/
+        buildcache --version
+
+    - name: Install buildcache (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        curl -L -o buildcache-win64.zip https://github.com/mbitsnbites/buildcache/releases/download/v0.28.7/buildcache-win64.zip
+        7z x buildcache-win64.zip
+        move buildcache.exe C:\Windows\System32\
+        buildcache --version
+
+    - name: Cache buildcache artifacts
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.buildcache
+          %USERPROFILE%\.buildcache
+        key: buildcache-${{ matrix.os }}-${{ matrix.qtver }}-${{ github.sha }}
+        restore-keys: |
+          buildcache-${{ matrix.os }}-${{ matrix.qtver }}-
+          buildcache-${{ matrix.os }}-
+
+    - name: Setup buildcache
+      run: |
+        buildcache --max-cache-size=2G
+        buildcache --show-stats
+
     - name: Configure CMake (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
       run: |
         cmake -B build -G "Ninja" \
           -DCMAKE_BUILD_TYPE=RelWithDebInfo \
           -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/${{ matrix.qtver }}/gcc_64" \
-          -DCMAKE_TOOLCHAIN_FILE=external/vcpkg/scripts/buildsystems/vcpkg.cmake
+          -DCMAKE_TOOLCHAIN_FILE=external/vcpkg/scripts/buildsystems/vcpkg.cmake \
+          -DCMAKE_C_COMPILER_LAUNCHER=buildcache \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=buildcache
 
     - name: Configure CMake (Windows)
       if: matrix.os == 'windows-latest'
@@ -85,10 +119,16 @@ jobs:
         -DCMAKE_BUILD_TYPE=RelWithDebInfo 
         -DCMAKE_PREFIX_PATH="${{ github.workspace }}/Qt/${{ matrix.qtver }}/msvc2022_64" 
         -DCMAKE_TOOLCHAIN_FILE=external/vcpkg/scripts/buildsystems/vcpkg.cmake
+        -DCMAKE_C_COMPILER_LAUNCHER=buildcache
+        -DCMAKE_CXX_COMPILER_LAUNCHER=buildcache
 
     - name: Build application
       run: |
         cmake --build build --config RelWithDebInfo --target DataObjectEditorApp
+
+    - name: Show buildcache statistics
+      run: |
+        buildcache --show-stats
 
     - name: Run tests (if available)
       run: |
