@@ -73,23 +73,8 @@ jobs:
         cd external\vcpkg
         .\bootstrap-vcpkg.bat
 
-    - name: Install buildcache (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        wget https://github.com/mbitsnbites/buildcache/releases/download/v0.28.1/buildcache-linux.tar.gz
-        tar -xzf buildcache-linux.tar.gz
-        echo "${{ github.workspace }}/buildcache/bin" >> $GITHUB_PATH
-        export PATH="${{ github.workspace }}/buildcache/bin:$PATH"
-        buildcache --version
-
-    - name: Install buildcache (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        curl -L -o buildcache-win64.zip https://github.com/mbitsnbites/buildcache/releases/download/v0.28.1/buildcache-win64.zip
-        7z x buildcache-win64.zip
-        echo "${{ github.workspace }}" >> $env:GITHUB_PATH
-        $env:PATH = "${{ github.workspace }};$env:PATH"
-        buildcache --version
+    - name: Setup buildcache
+      uses: CeetronSolutions/setup-buildcache-action@v1
 
     - name: Cache buildcache artifacts
       uses: actions/cache@v4
