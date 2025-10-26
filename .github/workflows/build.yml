@@ -13,6 +13,8 @@ concurrency:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    env:
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg_cache # Set at job level
     strategy:
       fail-fast: false
       matrix:
@@ -65,11 +67,9 @@ jobs:
     - name: Use MSVC (Windows)
       uses: ilammy/msvc-dev-cmd@v1
 
-    - name: Set vcpkg cache environment variable
+    - name: Create vcpkg cache directory
       shell: bash
-      run: |
-          echo "VCPKG_DEFAULT_BINARY_CACHE=${{ github.workspace }}/vcpkg_cache" >> $GITHUB_ENV
-          mkdir -p ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+      run: mkdir -p ${{ env.VCPKG_DEFAULT_BINARY_CACHE }} # Use the job-level env var
 
     - name: Cache vcpkg binary cache
       uses: actions/cache@v4

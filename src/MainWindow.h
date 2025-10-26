@@ -57,6 +57,7 @@ private slots:
     void slotOpenRecentFile();
     void slotSelectionChanged();
     void slotAbout();
+    void slotAlignColumns(); // New slot
 
     // Text editor synchronization
     void slotSyncTextToTree();

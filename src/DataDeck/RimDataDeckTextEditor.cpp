@@ -3,6 +3,7 @@
 #include "DataFileCompleter.h"
 #include "KeywordHelpWidget.h"
 #include "RimDataDeck.h"
+#include "RimDataKeyword.h" // Needed for RimDataKeyword
 
 #include <QPainter>
 #include <QTextBlock>
@@ -12,10 +13,168 @@
 #include <QScrollBar>
 #include <QTimer>
 #include <QRegularExpression>
-
+#include <QTextDocument> // Needed for QTextDocument
+#include <QTextCursor>   // Needed for QTextCursor
 //--------------------------------------------------------------------------------------------------
 ///
 //--------------------------------------------------------------------------------------------------
+void RimDataDeckTextEditor::alignColumnsForKeyword( RimDataKeyword* keyword )
+{
+    if ( !keyword || !document() )
+    {
+        return;
+    }
+
+    int startLine = keyword->startLine();
+    int endLine   = keyword->endLine();
+
+    if ( startLine < 0 || endLine < 0 || startLine > endLine )
+    {
+        return;
+    }
+
+    QTextCursor cursor( document() );
+    cursor.beginEditBlock(); // Group all changes into a single undo/redo block
+
+    QStringList linesToAlign;
+    QList<int> lineStartPositions; // Store starting position of each line
+
+    // Extract lines for the keyword
+    for ( int i = startLine - 1; i < endLine; ++i ) // Adjust for 0-based blockNumber
+    {
+        QTextBlock block = document()->findBlockByLineNumber( i );
+        if ( block.isValid() )
+        {
+            linesToAlign << block.text();
+            lineStartPositions << block.position();
+        }
+    }
+
+    if ( linesToAlign.isEmpty() )
+    {
+        cursor.endEditBlock();
+        return;
+    }
+
+    QList<QStringList> parsedLines;
+    QList<ColumnInfo> columnInfos;
+
+    // Parse each line into columns and determine max widths and types
+    for ( const QString& line : qAsConst( linesToAlign ) )
+    {
+        QStringList columns = line.split( QRegularExpression("\\s+"), Qt::SkipEmptyParts );
+        parsedLines << columns;
+
+        // Update column infos
+        for ( int i = 0; i < columns.size(); ++i )
+        {
+            if ( i >= columnInfos.size() )
+            {
+                columnInfos.append( ColumnInfo() );
+            }
+
+            bool isInt;
+            columns[i].toInt( &isInt );
+
+            bool isDouble;
+            columns[i].toDouble( &isDouble );
+
+            if ( isInt && !isDouble ) // It's an integer, but not a double (e.g., "123" vs "123.0")
+            {
+                if ( columnInfos[i].type == String ) {
+                    // If already a string, keep it as string
+                } else if ( columnInfos[i].type == Double ) {
+                    // If already a double, keep it as double
+                } else {
+                    columnInfos[i].type = Integer;
+                }
+                columnInfos[i].maxLength = qMax( columnInfos[i].maxLength, columns[i].length() );
+            }
+            else if ( isDouble )
+            {
+                columnInfos[i].type = Double;
+                int decimalPointPos = columns[i].indexOf( '.' );
+                if ( decimalPointPos == -1 ) // No decimal point, treat as integer part of double
+                {
+                    columnInfos[i].maxPreDecimal = qMax( columnInfos[i].maxPreDecimal, columns[i].length() );
+                    columnInfos[i].maxPostDecimal = qMax( columnInfos[i].maxPostDecimal, 0 );
+                }
+                else
+                {
+                    columnInfos[i].maxPreDecimal = qMax( columnInfos[i].maxPreDecimal, decimalPointPos );
+                    columnInfos[i].maxPostDecimal = qMax( columnInfos[i].maxPostDecimal, columns[i].length() - decimalPointPos - 1 );
+                }
+            }
+            else // String
+            {
+                columnInfos[i].type = String;
+                columnInfos[i].maxLength = qMax( columnInfos[i].maxLength, columns[i].length() );
+            }
+        }
+    }
+
+    // Reconstruct lines with aligned columns
+    QStringList alignedLines;
+    for ( const QStringList& columns : qAsConst( parsedLines ) )
+    {
+        QString alignedLine = "  "; // Add two spaces before the first column
+        for ( int i = 0; i < columns.size(); ++i )
+        {
+            const QString& columnText = columns[i];
+            const ColumnInfo& info = columnInfos[i];
+
+            if ( info.type == Integer )
+            {
+                alignedLine += columnText.rightJustified( info.maxLength, ' ' );
+            }
+            else if ( info.type == Double )
+            {
+                int decimalPointPos = columnText.indexOf( '.' );
+                QString preDecimal;
+                QString postDecimal;
+
+                if ( decimalPointPos == -1 )
+                {
+                    preDecimal = columnText;
+                    postDecimal = "";
+                }
+                else
+                {
+                    preDecimal = columnText.left( decimalPointPos );
+                    postDecimal = columnText.mid( decimalPointPos + 1 );
+                }
+
+                alignedLine += preDecimal.rightJustified( info.maxPreDecimal, ' ' );
+                if ( info.maxPostDecimal > 0 ) // Only add decimal point if there are post-decimal digits
+                {
+                    alignedLine += ".";
+                    alignedLine += postDecimal.leftJustified( info.maxPostDecimal, ' ' );
+                }
+            }
+            else // String
+            {
+                alignedLine += columnText.leftJustified( info.maxLength, ' ' );
+            }
+
+            if ( i < columns.size() - 1 )
+            {
+                alignedLine += "  "; // Two spaces between columns for readability
+            }
+        }
+        alignedLines << alignedLine.trimmed(); // Trim trailing spaces from the last column's padding
+    }
+
+    // Replace the original text with the aligned text
+    cursor.setPosition( lineStartPositions.first() );
+    cursor.setPosition( lineStartPositions.first() + linesToAlign.join('\n').length(), QTextCursor::KeepAnchor );
+
+    cursor.insertText( alignedLines.join( '\n' ) );
+
+    cursor.endEditBlock();
+
+    // Mark document as modified
+    document()->setModified( true );
+}
 RimDataDeckTextEditor::RimDataDeckTextEditor( QWidget* parent )
     : QPlainTextEdit( parent )
     , m_dataDeck( nullptr )

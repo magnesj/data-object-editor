@@ -9,6 +9,16 @@ class DataFileSyntaxHighlighter;
 class DataFileCompleter;
 class KeywordHelpWidget;
 class LineNumberArea;
+class RimDataKeyword; // Forward declaration for RimDataKeyword
+
+enum ColumnType { String, Integer, Double };
+
+struct ColumnInfo {
+    ColumnType type = String;
+    int maxLength = 0; // Max length for strings and integers
+    int maxPreDecimal = 0; // Max length before decimal for doubles
+    int maxPostDecimal = 0; // Max length after decimal for doubles
+};
 
 //==================================================================================================
 /// Text editor for Eclipse DATA files with syntax highlighting and line numbers
@@ -31,6 +41,7 @@ public:
     int  lineNumberAreaWidth();
 
     void setKeywordHelpWidget( KeywordHelpWidget* helpWidget );
+    void alignColumnsForKeyword( RimDataKeyword* keyword ); // New method
 
 signals:
     void modificationChanged( bool changed );

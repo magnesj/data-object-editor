@@ -252,6 +252,12 @@ void MainWindow::createToolBar()
     m_syncTextToTreeAction->setEnabled( false );
     connect( m_syncTextToTreeAction, &QAction::triggered, this, &MainWindow::slotSyncTextToTree );
     m_textEditorToolBar->addAction( m_syncTextToTreeAction );
+
+    // Align Columns action
+    QAction* alignColumnsAction = new QAction( "Align Columns", this );
+    alignColumnsAction->setToolTip( "Align columns for selected keyword" );
+    connect( alignColumnsAction, &QAction::triggered, this, &MainWindow::slotAlignColumns );
+    m_textEditorToolBar->addAction( alignColumnsAction );
 }
 
 void MainWindow::createEmptyProject()
@@ -404,6 +410,40 @@ void MainWindow::slotAbout()
                         "- AppFwk (Application Framework)\n"
                         "- opm-common\n\n"
                         "Built with Qt6 and C++23" );
+}
+
+void MainWindow::slotAlignColumns()
+{
+    if ( !m_textEditor )
+    {
+        return;
+    }
+
+    // Get the currently selected keyword
+    RimDataDeck* dataDeck = getCurrentDataDeck();
+
+    std::vector<caf::PdmUiItem*> selection;
+    m_pdmUiTreeView->selectedUiItems( selection );
+
+    RimDataKeyword* keyword = nullptr;
+    if ( !selection.empty() )
+    {
+        caf::PdmUiObjectHandle* pdmUiObj = dynamic_cast<caf::PdmUiObjectHandle*>( selection[0] );
+        if ( pdmUiObj )
+        {
+            keyword = dynamic_cast<RimDataKeyword*>( pdmUiObj->objectHandle() );
+        }
+    }
+
+    if ( keyword )
+    {
+        m_textEditor->alignColumnsForKeyword( keyword );
+        statusBar()->showMessage( QString( "Aligned columns for keyword: %1" ).arg( keyword->keywordName() ), 3000 );
+    }
+    else
+    {
+        statusBar()->showMessage( "No keyword selected for column alignment", 3000 );
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
