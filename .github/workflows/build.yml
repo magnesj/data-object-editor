@@ -30,6 +30,10 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Setup buildcache
+      run: |
+        buildcache --show-stats
+
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
       with:
@@ -86,11 +90,6 @@ jobs:
         restore-keys: |
           buildcache-${{ matrix.os }}-${{ matrix.qtver }}-
           buildcache-${{ matrix.os }}-
-
-    - name: Setup buildcache
-      run: |
-        buildcache --max-cache-size=2G
-        buildcache --show-stats
 
     - name: Configure CMake (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
