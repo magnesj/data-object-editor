@@ -43,6 +43,20 @@ jobs:
     - name: Use MSVC (Windows)
       uses: ilammy/msvc-dev-cmd@v1
 
+    - name: Cache vcpkg binary cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          external/vcpkg/downloads
+          external/vcpkg/packages
+          external/vcpkg/buildtrees
+          ~/.cache/vcpkg
+          %APPDATA%/vcpkg
+        key: vcpkg-${{ matrix.os }}-${{ matrix.qtver }}-${{ hashFiles('vcpkg.json', 'external/vcpkg/ports/**') }}
+        restore-keys: |
+          vcpkg-${{ matrix.os }}-${{ matrix.qtver }}-
+          vcpkg-${{ matrix.os }}-
+
     - name: Bootstrap vcpkg (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
       run: |
