@@ -80,3 +80,10 @@ set(APP_FWK_LIBRARIES
 # Application
 # ========================================
 add_subdirectory(src)
+
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/external/ResInsight/ThirdParty/custom-opm-common/opm-common/opm/input/eclipse/share/keywords"
+        DESTINATION "share"
+        PATTERN "*/.git*" EXCLUDE
+        PATTERN "*/.svn*" EXCLUDE
+        PATTERN "*/.DS_Store" EXCLUDE
+        )

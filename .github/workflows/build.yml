@@ -68,8 +68,8 @@ jobs:
     - name: Set vcpkg cache environment variable
       shell: bash
       run: |
-          mkdir -p ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
           echo "VCPKG_DEFAULT_BINARY_CACHE=${{ github.workspace }}/vcpkg_cache" >> $GITHUB_ENV
+          mkdir -p ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
 
     - name: Cache vcpkg binary cache
       uses: actions/cache@v4

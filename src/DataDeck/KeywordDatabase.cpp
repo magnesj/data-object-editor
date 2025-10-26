@@ -70,6 +70,9 @@ QString KeywordDatabase::findKeywordsDirectory() const
     
     QString appDir = QApplication::applicationDirPath();
     
+    // New search path for installed keywords
+    searchPaths << appDir + "/../share/keywords";
+
     // Common relative paths from executable location
     searchPaths << appDir + "/../external/ResInsight/ThirdParty/custom-opm-common/opm-common/opm/input/eclipse/share/keywords";
     searchPaths << appDir + "/../../external/ResInsight/ThirdParty/custom-opm-common/opm-common/opm/input/eclipse/share/keywords";
