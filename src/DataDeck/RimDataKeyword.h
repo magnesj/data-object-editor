@@ -25,7 +25,7 @@ public:
     RimDataKeyword();
     ~RimDataKeyword() override;
 
-    void setDeckKeyword( const Opm::DeckKeyword* deckKeyword );
+    virtual void setDeckKeyword( const Opm::DeckKeyword* deckKeyword );
 
     QString keywordName() const;
     int     recordCount() const;
@@ -41,6 +41,8 @@ public:
 protected:
     void defineUiOrdering( QString uiConfigName, caf::PdmUiOrdering& uiOrdering ) override;
     void defineEditorAttribute( const caf::PdmFieldHandle* field, QString uiConfigName, caf::PdmUiEditorAttribute* attribute ) override;
+    
+    const Opm::DeckKeyword* deckKeyword() const { return m_deckKeyword; }
 
 private:
     void buildItemsFromKeyword();

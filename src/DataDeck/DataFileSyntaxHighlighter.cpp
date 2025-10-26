@@ -33,12 +33,16 @@ DataFileSyntaxHighlighter::DataFileSyntaxHighlighter( QTextDocument* parent )
     m_contextInvalidFormat.setFontWeight( QFont::Bold );
 
     // INCLUDE keyword (important)
-    QTextCharFormat includeFormat;
-    includeFormat.setForeground( QColor( 197, 134, 192 ) ); // Purple/magenta like in example
-    includeFormat.setFontWeight( QFont::Bold );
+    m_includeFormat.setForeground( QColor( 197, 134, 192 ) ); // Purple/magenta like in example
+    m_includeFormat.setFontWeight( QFont::Bold );
     rule.pattern = QRegularExpression( "^INCLUDE\\b" );
-    rule.format  = includeFormat;
+    rule.format  = m_includeFormat;
     m_rules.append( rule );
+
+    // Include file paths (setup format, will be applied manually)
+    m_includePathFormat.setForeground( QColor( 214, 157, 133 ) ); // Light orange/peach
+    m_includePathFormat.setFontWeight( QFont::Normal );
+    m_includePathFormat.setUnderlineStyle( QTextCharFormat::SingleUnderline );
 
     // Numbers (including scientific notation)
     m_numberFormat.setForeground( QColor( 181, 206, 168 ) ); // Dark yellow
@@ -98,6 +102,20 @@ void DataFileSyntaxHighlighter::highlightBlock( const QString& text )
         {
             QRegularExpressionMatch match = matchIterator.next();
             setFormat( match.capturedStart(), match.capturedLength(), rule.format );
+        }
+    }
+
+    // Special handling for INCLUDE statements
+    if ( text.trimmed().startsWith( "INCLUDE" ) )
+    {
+        // Find the file path after INCLUDE keyword
+        QRegularExpression includeRegex( "^\\s*INCLUDE\\s+(['\"]?)([^'\"\\s]+)\\1" );
+        QRegularExpressionMatch match = includeRegex.match( text );
+        if ( match.hasMatch() )
+        {
+            int pathStart = match.capturedStart( 2 );
+            int pathLength = match.capturedLength( 2 );
+            setFormat( pathStart, pathLength, m_includePathFormat );
         }
     }
 

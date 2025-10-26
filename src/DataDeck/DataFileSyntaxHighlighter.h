@@ -44,4 +44,6 @@ private:
     QTextCharFormat m_numberFormat;
     QTextCharFormat m_stringFormat;
     QTextCharFormat m_delimiterFormat;
+    QTextCharFormat m_includeFormat;
+    QTextCharFormat m_includePathFormat;
 };

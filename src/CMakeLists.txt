@@ -22,6 +22,10 @@ set(DATADECK_FILES
     DataDeck/RimDataKeyword.cpp
     DataDeck/RimDataItem.h
     DataDeck/RimDataItem.cpp
+    DataDeck/RimIncludeFile.h
+    DataDeck/RimIncludeFile.cpp
+    DataDeck/RimIncludeKeyword.h
+    DataDeck/RimIncludeKeyword.cpp
     DataDeck/RicImportDataDeckFeature.h
     DataDeck/RicImportDataDeckFeature.cpp
     DataDeck/DataFileSyntaxHighlighter.h

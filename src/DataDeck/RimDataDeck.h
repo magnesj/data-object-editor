@@ -16,6 +16,7 @@ class Deck;
 
 class RimDataSection;
 class RimDataKeyword;
+class RimIncludeFile;
 
 //==================================================================================================
 /// Represents an Eclipse DATA file parsed using opm-common
@@ -40,9 +41,19 @@ public:
     
     // Position tracking
     RimDataKeyword* findKeywordAtLine( int lineNumber );
+    
+    // Include file management
+    void addIncludeFile( RimIncludeFile* includeFile );
+    QList<RimIncludeFile*> includeFiles() const;
+    void resolveIncludes();
+    QString basePath() const;
+    QStringList findIncludeReferences() const;
+    bool validateIncludePaths() const;
+    void resolveIncludesFromRawFile();
 
 protected:
     void defineUiOrdering( QString uiConfigName, caf::PdmUiOrdering& uiOrdering ) override;
+    void defineUiTreeOrdering( caf::PdmUiTreeOrdering& uiTreeOrdering, QString uiConfigName = "" ) override;
 
 private:
     void buildSectionsFromDeck();
@@ -52,8 +63,10 @@ private:
     caf::PdmField<QString>                      m_filePath;
     caf::PdmField<int>                          m_keywordCount;
     caf::PdmField<QString>                      m_fileName;
+    caf::PdmField<QString>                      m_basePath;        // Base directory for resolving relative includes
 
     caf::PdmChildArrayField<RimDataSection*>    m_sections;
+    caf::PdmChildArrayField<RimIncludeFile*>    m_includeFiles;   // Managed include files
 
     std::shared_ptr<Opm::Deck>                  m_deck;
     
